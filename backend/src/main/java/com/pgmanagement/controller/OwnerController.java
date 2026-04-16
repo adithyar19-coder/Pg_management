@@ -63,6 +63,18 @@ public class OwnerController {
         return ResponseEntity.ok(ApiResponse.success("OK", ownerService.getAllOwnerRooms(getUser(ud))));
     }
 
+    @PostMapping("/rooms/bulk")
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<ApiResponse<List<Room>>> addRoomsBulk(@AuthenticationPrincipal UserDetails ud,
+                                                                  @RequestBody Map<String, Object> body) {
+        Object pgIdObj = body.get("pgId");
+        if (pgIdObj == null) throw new IllegalArgumentException("pgId is required");
+        Long pgId = Long.valueOf(pgIdObj.toString());
+        List<Map<String, Object>> roomsData = (List<Map<String, Object>>) body.get("rooms");
+        return ResponseEntity.ok(ApiResponse.success("Rooms added",
+                ownerService.addRoomsBulk(getUser(ud), pgId, roomsData)));
+    }
+
     @GetMapping("/pg/{pgId}/rooms")
     public ResponseEntity<ApiResponse<List<Room>>> getRoomsByPG(@PathVariable Long pgId) {
         return ResponseEntity.ok(ApiResponse.success("OK", ownerService.getRoomsByPG(pgId)));

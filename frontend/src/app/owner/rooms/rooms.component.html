@@ -1,17 +1,22 @@
 <div class="page-header">
   <div><h1>Rooms</h1><p>Manage all rooms across your PG properties</p></div>
-  <button class="btn btn-primary" (click)="openAdd()" [disabled]="pgs.length===0">+ Add Room</button>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-outline" (click)="openBulk()" [disabled]="pgs.length===0">➕ Bulk Add</button>
+    <button class="btn btn-primary" (click)="openAdd()" [disabled]="pgs.length===0">+ Add Room</button>
+  </div>
 </div>
 
-<!-- Filter bar -->
+<!-- Filter bar + Summary chips -->
 <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap">
   <select class="form-control form-select" style="max-width:220px" [(ngModel)]="filterPgId">
     <option value="">All PGs</option>
     <option *ngFor="let pg of pgs" [value]="pg.id">{{ pg.name }}</option>
   </select>
-  <div style="display:flex;gap:8px">
-    <span class="badge badge-green">✓ Occupied: {{ occupiedCount() }}</span>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <span class="badge badge-green">✓ Fully Occupied: {{ fullCount() }}</span>
+    <span class="badge badge-blue">◐ Partially Occupied: {{ partialCount() }}</span>
     <span class="badge badge-gray">○ Vacant: {{ vacantCount() }}</span>
+    <span class="badge badge-purple">🛏 Beds: {{ occupiedBeds() }}/{{ totalBeds() }}</span>
   </div>
 </div>
 
@@ -25,18 +30,24 @@
   <div class="empty-text">Add rooms to your PG properties</div>
 </div>
 
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px" *ngIf="!loading && filtered.length>0">
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px" *ngIf="!loading && filtered.length>0">
   <div class="card" *ngFor="let room of filtered"
-       [style.border-left]="room.isOccupied ? '4px solid var(--secondary)' : '4px solid var(--gray-300)'">
+       [style.border-left]="'4px solid ' + borderColor(room)">
     <div class="card-body" style="padding:16px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
         <div style="font-size:1.75rem">🚪</div>
-        <span class="badge" [ngClass]="room.isOccupied ? 'badge-green' : 'badge-gray'">
-          {{ room.isOccupied ? 'Occupied' : 'Vacant' }}
+        <span class="badge" [ngClass]="badgeClass(room)">
+          {{ isFull(room) ? '✓ Full' : (isPartial(room) ? '◐ Partial' : '○ Vacant') }} · {{ occLabel(room) }}
         </span>
       </div>
       <div style="font-weight:800;font-size:1.25rem;color:var(--gray-900);margin-bottom:4px">Room {{ room.roomNumber }}</div>
-      <div style="font-size:0.8rem;color:var(--gray-500);margin-bottom:8px">{{ room.pg?.name }}</div>
+      <div style="font-size:0.8rem;color:var(--gray-500);margin-bottom:10px">{{ room.pg?.name }}</div>
+
+      <!-- Occupancy bar -->
+      <div style="background:var(--gray-100);border-radius:999px;height:6px;overflow:hidden;margin-bottom:12px">
+        <div [style.width.%]="occPct(room)" [style.background]="barColor(room)" style="height:100%;transition:width .25s"></div>
+      </div>
+
       <div style="display:flex;flex-direction:column;gap:4px">
         <div style="display:flex;justify-content:space-between">
           <span style="color:var(--gray-500);font-size:0.8rem">Type</span>
@@ -44,7 +55,11 @@
         </div>
         <div style="display:flex;justify-content:space-between">
           <span style="color:var(--gray-500);font-size:0.8rem">Capacity</span>
-          <span style="font-weight:600;font-size:0.8rem">{{ room.capacity }} person(s)</span>
+          <span style="font-weight:600;font-size:0.8rem">{{ cap(room) }} bed(s)</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--gray-500);font-size:0.8rem">Occupied</span>
+          <span style="font-weight:700;color:var(--gray-900);font-size:0.8rem">{{ occ(room) }} / {{ cap(room) }}</span>
         </div>
         <div style="display:flex;justify-content:space-between">
           <span style="color:var(--gray-500);font-size:0.8rem">Rent</span>
@@ -55,7 +70,7 @@
   </div>
 </div>
 
-<!-- Modal -->
+<!-- Single Add Room Modal -->
 <div class="modal-overlay" *ngIf="showModal" (click)="showModal=false">
   <div class="modal" (click)="$event.stopPropagation()">
     <div class="modal-header">
@@ -95,6 +110,64 @@
       <button class="btn btn-primary" (click)="save()" [disabled]="saving || !form.roomNumber || !form.rentAmount">
         <span *ngIf="saving" class="spinner"></span>
         {{ saving ? 'Saving...' : 'Add Room' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- Bulk Add Rooms Modal                                                -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" *ngIf="showBulkModal">
+  <div class="modal" (click)="$event.stopPropagation()" style="max-width:920px;width:92%">
+    <div class="modal-header">
+      <span class="modal-title">➕ Bulk Add Rooms</span>
+      <button class="modal-close" (click)="showBulkModal=false">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:65vh;overflow-y:auto">
+      <div style="display:grid;grid-template-columns:1fr 180px 140px;gap:10px;align-items:end;margin-bottom:14px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Select PG *</label>
+          <select class="form-control form-select" [(ngModel)]="bulkPgId" (change)="generateRows()">
+            <option *ngFor="let pg of pgs" [value]="pg.id">{{ pg.name }}</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Number of rooms</label>
+          <input class="form-control" type="number" min="1" max="100" [(ngModel)]="bulkCount">
+        </div>
+        <button class="btn btn-outline" (click)="generateRows()">🔄 Regenerate</button>
+      </div>
+
+      <div *ngIf="bulkError" class="alert alert-error" style="margin-bottom:12px">⚠️ {{ bulkError }}</div>
+
+      <div style="display:grid;grid-template-columns:60px 1fr 140px 110px 1fr 42px;gap:10px;align-items:center;padding:0 4px 8px 4px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:var(--gray-500)">
+        <div>#</div>
+        <div>Room Number *</div>
+        <div>Sharing</div>
+        <div>Capacity</div>
+        <div>Rent / month *</div>
+        <div></div>
+      </div>
+
+      <div *ngFor="let row of rows; let i = index" style="display:grid;grid-template-columns:60px 1fr 140px 110px 1fr 42px;gap:10px;align-items:center;padding:6px 4px;border-bottom:1px solid var(--gray-100)">
+        <div style="font-weight:700;color:var(--gray-400);font-size:0.9rem">{{ i + 1 }}</div>
+        <input class="form-control" [(ngModel)]="row.roomNumber" name="bn{{i}}" placeholder="e.g. 101">
+        <select class="form-control form-select" [(ngModel)]="row.type" name="bt{{i}}" (change)="onTypeChange(row)">
+          <option *ngFor="let t of roomTypes" [value]="t">{{ t }}</option>
+        </select>
+        <input class="form-control" type="number" min="1" max="20" [(ngModel)]="row.capacity" name="bc{{i}}">
+        <input class="form-control" type="number" min="0" [(ngModel)]="row.rentAmount" name="br{{i}}" placeholder="e.g. 8000">
+        <button class="btn btn-outline btn-sm" (click)="removeRow(i)" style="color:#dc2626;border-color:#fecaca">✕</button>
+      </div>
+
+      <button class="btn btn-outline btn-sm" style="margin-top:14px" (click)="addRow()">+ Add another room</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="showBulkModal=false">Cancel</button>
+      <button class="btn btn-primary" (click)="saveBulk()" [disabled]="savingBulk || rows.length === 0">
+        <span *ngIf="savingBulk" class="spinner"></span>
+        {{ savingBulk ? 'Saving...' : '✓ Save ' + rows.length + ' Rooms' }}
       </button>
     </div>
   </div>

@@ -38,6 +38,10 @@ public class Room {
     @Builder.Default
     private RoomType type = RoomType.SINGLE;
 
+    /** Count of active RoomAssignments for this room. Populated by the service layer — not persisted. */
+    @Transient
+    private Integer currentOccupancy;
+
     public enum RoomType {
         SINGLE, DOUBLE, TRIPLE, DORMITORY
     }

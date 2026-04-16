@@ -91,3 +91,52 @@
     </div>
   </div>
 </div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- Setup Rooms modal — opens automatically after a new PG is created   -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" *ngIf="showRoomsModal">
+  <div class="modal" (click)="$event.stopPropagation()" style="max-width:920px;width:92%">
+    <div class="modal-header">
+      <span class="modal-title">🚪 Set up rooms for <strong>{{ setupPgName }}</strong></span>
+      <button class="modal-close" (click)="skipSetup()">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:60vh;overflow-y:auto">
+      <div style="background:var(--primary-light);color:var(--primary-dark);padding:10px 14px;border-radius:var(--radius);font-size:0.8rem;margin-bottom:14px">
+        💡 We pre-filled {{ rows.length }} rows based on your <em>Total Rooms</em>. Edit room number, sharing type, capacity and rent, then click <strong>Save All</strong>. You can add or remove rows anytime.
+      </div>
+
+      <div *ngIf="roomsError" class="alert alert-error" style="margin-bottom:12px">⚠️ {{ roomsError }}</div>
+
+      <!-- Column headings -->
+      <div style="display:grid;grid-template-columns:60px 1fr 140px 110px 1fr 42px;gap:10px;align-items:center;padding:0 4px 8px 4px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:var(--gray-500)">
+        <div>#</div>
+        <div>Room Number *</div>
+        <div>Sharing</div>
+        <div>Capacity</div>
+        <div>Rent / month *</div>
+        <div></div>
+      </div>
+
+      <div *ngFor="let row of rows; let i = index" style="display:grid;grid-template-columns:60px 1fr 140px 110px 1fr 42px;gap:10px;align-items:center;padding:6px 4px;border-bottom:1px solid var(--gray-100)">
+        <div style="font-weight:700;color:var(--gray-400);font-size:0.9rem">{{ i + 1 }}</div>
+        <input class="form-control" [(ngModel)]="row.roomNumber" name="rn{{i}}" placeholder="e.g. 101">
+        <select class="form-control form-select" [(ngModel)]="row.type" name="tp{{i}}" (change)="onTypeChange(row)">
+          <option *ngFor="let t of roomTypes" [value]="t">{{ t }}</option>
+        </select>
+        <input class="form-control" type="number" min="1" max="20" [(ngModel)]="row.capacity" name="cp{{i}}">
+        <input class="form-control" type="number" min="0" [(ngModel)]="row.rentAmount" name="ra{{i}}" placeholder="e.g. 8000">
+        <button class="btn btn-outline btn-sm" (click)="removeRow(i)" style="color:#dc2626;border-color:#fecaca" title="Remove row">✕</button>
+      </div>
+
+      <button class="btn btn-outline btn-sm" style="margin-top:14px" (click)="addRow()">+ Add another room</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="skipSetup()">Skip for now</button>
+      <button class="btn btn-primary" (click)="saveAllRooms()" [disabled]="savingRooms || rows.length === 0">
+        <span *ngIf="savingRooms" class="spinner"></span>
+        {{ savingRooms ? 'Saving...' : '✓ Save ' + rows.length + ' Rooms' }}
+      </button>
+    </div>
+  </div>
+</div>

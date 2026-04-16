@@ -95,8 +95,9 @@ public class DataSeeder implements CommandLineRunner {
         // ── Rooms ──────────────────────────────────────────────────────────
         Room r101 = roomRepo.save(Room.builder().pg(pg1).roomNumber("101").capacity(1)
                 .rentAmount(new BigDecimal("8500")).type(Room.RoomType.SINGLE).isOccupied(true).build());
+        // Room 102 (DOUBLE) will have Priya as its only tenant — 1/2 beds filled, showcases partial occupancy
         Room r102 = roomRepo.save(Room.builder().pg(pg1).roomNumber("102").capacity(2)
-                .rentAmount(new BigDecimal("6000")).type(Room.RoomType.DOUBLE).isOccupied(true).build());
+                .rentAmount(new BigDecimal("6000")).type(Room.RoomType.DOUBLE).isOccupied(false).build());
         Room r103 = roomRepo.save(Room.builder().pg(pg1).roomNumber("103").capacity(1)
                 .rentAmount(new BigDecimal("9000")).type(Room.RoomType.SINGLE).isOccupied(true).build());
         Room r104 = roomRepo.save(Room.builder().pg(pg1).roomNumber("104").capacity(3)

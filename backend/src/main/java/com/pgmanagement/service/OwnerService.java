@@ -9,9 +9,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -72,14 +76,69 @@ public class OwnerService {
         return roomRepository.save(room);
     }
 
+    @Transactional
+    public List<Room> addRoomsBulk(User owner, Long pgId, List<Map<String, Object>> roomsData) {
+        if (pgId == null) throw new IllegalArgumentException("pgId is required");
+        if (roomsData == null || roomsData.isEmpty()) throw new IllegalArgumentException("At least one room is required");
+        PG pg = pgRepository.findById(pgId).orElseThrow(() -> new RuntimeException("PG not found"));
+        if (!pg.getOwner().getId().equals(owner.getId())) throw new RuntimeException("Not authorized");
+
+        // Collect existing room numbers in this PG to skip duplicates silently
+        Set<String> existing = roomRepository.findByPg(pg).stream()
+                .map(Room::getRoomNumber).collect(Collectors.toSet());
+
+        List<Room> created = new ArrayList<>();
+        Set<String> seenInRequest = new HashSet<>();
+        for (Map<String, Object> data : roomsData) {
+            Object rnObj = data.get("roomNumber");
+            if (rnObj == null || rnObj.toString().isBlank()) continue;
+            String roomNumber = rnObj.toString().trim();
+            if (existing.contains(roomNumber) || !seenInRequest.add(roomNumber)) continue;
+
+            Object rentObj = data.get("rentAmount");
+            if (rentObj == null || rentObj.toString().isBlank()) {
+                throw new IllegalArgumentException("Rent amount is required for room " + roomNumber);
+            }
+            int capacity = data.get("capacity") != null && !data.get("capacity").toString().isBlank()
+                    ? Integer.parseInt(data.get("capacity").toString()) : 1;
+            String type = data.getOrDefault("type", "SINGLE").toString();
+
+            Room room = Room.builder()
+                    .pg(pg)
+                    .roomNumber(roomNumber)
+                    .capacity(capacity)
+                    .rentAmount(new BigDecimal(rentObj.toString()))
+                    .type(Room.RoomType.valueOf(type))
+                    .isOccupied(false)
+                    .build();
+            created.add(roomRepository.save(room));
+        }
+        return created;
+    }
+
     public List<Room> getRoomsByPG(Long pgId) {
         PG pg = pgRepository.findById(pgId).orElseThrow(() -> new RuntimeException("PG not found"));
-        return roomRepository.findByPg(pg);
+        List<Room> rooms = roomRepository.findByPg(pg);
+        populateOccupancy(rooms);
+        return rooms;
     }
 
     public List<Room> getAllOwnerRooms(User owner) {
         List<PG> pgs = pgRepository.findByOwner(owner);
-        return roomRepository.findByPgIn(pgs);
+        List<Room> rooms = roomRepository.findByPgIn(pgs);
+        populateOccupancy(rooms);
+        return rooms;
+    }
+
+    /** Populate the transient currentOccupancy field on each Room via a single query. */
+    private void populateOccupancy(List<Room> rooms) {
+        if (rooms.isEmpty()) return;
+        List<RoomAssignment> active = roomAssignmentRepository.findByRoomInAndIsActive(rooms, true);
+        Map<Long, Long> countByRoom = active.stream()
+                .collect(Collectors.groupingBy(a -> a.getRoom().getId(), Collectors.counting()));
+        for (Room r : rooms) {
+            r.setCurrentOccupancy(countByRoom.getOrDefault(r.getId(), 0L).intValue());
+        }
     }
 
     @Transactional
@@ -88,17 +147,26 @@ public class OwnerService {
         if (!room.getPg().getOwner().getId().equals(owner.getId())) throw new RuntimeException("Not authorized");
         User tenant = userRepository.findById(tenantId).orElseThrow(() -> new RuntimeException("Tenant not found"));
 
-        // Vacate existing assignment if any
+        int capacity = room.getCapacity() != null ? room.getCapacity() : 1;
+        long activeCount = roomAssignmentRepository.countByRoomAndIsActive(room, true);
+        if (activeCount >= capacity) {
+            throw new IllegalArgumentException("Room " + room.getRoomNumber() + " is already full (" + activeCount + "/" + capacity + ")");
+        }
+
+        // Vacate existing assignment if any (and recompute old room's occupied flag)
         roomAssignmentRepository.findByTenantAndIsActive(tenant, true).ifPresent(a -> {
             a.setIsActive(false);
             a.setLeaveDate(LocalDate.now());
             Room oldRoom = a.getRoom();
-            oldRoom.setIsOccupied(false);
-            roomRepository.save(oldRoom);
             roomAssignmentRepository.save(a);
+            long oldActive = roomAssignmentRepository.countByRoomAndIsActive(oldRoom, true);
+            int oldCap = oldRoom.getCapacity() != null ? oldRoom.getCapacity() : 1;
+            oldRoom.setIsOccupied(oldActive >= oldCap);
+            roomRepository.save(oldRoom);
         });
 
-        room.setIsOccupied(true);
+        // Mark new room full iff this assignment fills the last spot
+        room.setIsOccupied((activeCount + 1) >= capacity);
         roomRepository.save(room);
 
         RoomAssignment assignment = RoomAssignment.builder()
@@ -231,8 +299,26 @@ public class OwnerService {
     public Map<String, Object> getDashboardStats(User owner) {
         List<PG> pgs = pgRepository.findByOwner(owner);
         List<Room> rooms = roomRepository.findByPgIn(pgs);
-        long occupied = rooms.stream().filter(r -> Boolean.TRUE.equals(r.getIsOccupied())).count();
-        long total = rooms.size();
+        populateOccupancy(rooms);
+
+        long fullyOccupied = rooms.stream()
+                .filter(r -> r.getCapacity() != null && r.getCurrentOccupancy() != null
+                        && r.getCurrentOccupancy() >= r.getCapacity())
+                .count();
+        long partiallyOccupied = rooms.stream()
+                .filter(r -> r.getCurrentOccupancy() != null && r.getCurrentOccupancy() > 0
+                        && r.getCapacity() != null && r.getCurrentOccupancy() < r.getCapacity())
+                .count();
+        long totalRooms = rooms.size();
+        long vacantRooms = rooms.stream()
+                .filter(r -> r.getCurrentOccupancy() == null || r.getCurrentOccupancy() == 0)
+                .count();
+
+        long totalBeds = rooms.stream()
+                .mapToInt(r -> r.getCapacity() != null ? r.getCapacity() : 0).sum();
+        long occupiedBeds = rooms.stream()
+                .mapToInt(r -> r.getCurrentOccupancy() != null ? r.getCurrentOccupancy() : 0).sum();
+
         long openComplaints = complaintRepository.countByPgOwnerAndStatus(owner, Complaint.ComplaintStatus.OPEN);
         List<RentRecord> allRent = rentRecordRepository.findByRoom_PgOwner(owner);
         long pendingRent = allRent.stream().filter(r -> r.getStatus() == RentRecord.RentStatus.PENDING).count();
@@ -243,9 +329,12 @@ public class OwnerService {
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalPGs", pgs.size());
-        stats.put("totalRooms", total);
-        stats.put("occupiedRooms", occupied);
-        stats.put("vacantRooms", total - occupied);
+        stats.put("totalRooms", totalRooms);
+        stats.put("occupiedRooms", fullyOccupied);
+        stats.put("partiallyOccupiedRooms", partiallyOccupied);
+        stats.put("vacantRooms", vacantRooms);
+        stats.put("totalBeds", totalBeds);
+        stats.put("occupiedBeds", occupiedBeds);
         stats.put("openComplaints", openComplaints);
         stats.put("pendingRent", pendingRent);
         stats.put("monthlyRevenue", monthlyRevenue);

@@ -28,7 +28,8 @@ export interface Room {
   roomNumber: string;
   capacity: number;
   rentAmount: number;
-  isOccupied: boolean;
+  isOccupied: boolean;      // true only when currentOccupancy >= capacity
+  currentOccupancy?: number; // count of active RoomAssignments, populated by backend
   type: string;
   pg?: PG;
 }

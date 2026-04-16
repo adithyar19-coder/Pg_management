@@ -11,4 +11,6 @@ public interface RoomAssignmentRepository extends JpaRepository<RoomAssignment, 
     Optional<RoomAssignment> findByTenantAndIsActive(User tenant, Boolean isActive);
     List<RoomAssignment> findByRoomAndIsActive(Room room, Boolean isActive);
     List<RoomAssignment> findByRoom_PgOwnerAndIsActive(User owner, Boolean isActive);
+    long countByRoomAndIsActive(Room room, Boolean isActive);
+    List<RoomAssignment> findByRoomInAndIsActive(List<Room> rooms, Boolean isActive);
 }

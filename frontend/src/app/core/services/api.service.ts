@@ -27,6 +27,9 @@ export class ApiService {
   addRoom(data: any): Observable<ApiResponse<Room>> {
     return this.http.post<ApiResponse<Room>>(`${BASE}/owner/rooms`, data);
   }
+  bulkAddRooms(pgId: number, rooms: any[]): Observable<ApiResponse<Room[]>> {
+    return this.http.post<ApiResponse<Room[]>>(`${BASE}/owner/rooms/bulk`, { pgId, rooms });
+  }
   getOwnerRooms(): Observable<ApiResponse<Room[]>> {
     return this.http.get<ApiResponse<Room[]>>(`${BASE}/owner/rooms`);
   }
