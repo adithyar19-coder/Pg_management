@@ -1,0 +1,93 @@
+<div class="page-header">
+  <div><h1>My PG Properties</h1><p>Manage all your hostel and PG listings</p></div>
+  <button class="btn btn-primary" (click)="openAdd()">+ Add New PG</button>
+</div>
+
+<div *ngIf="loading" style="text-align:center;padding:60px"><div class="spinner spinner-dark"></div></div>
+
+<div *ngIf="!loading && pgs.length === 0" class="empty-state card" style="padding:60px">
+  <div class="empty-icon">🏢</div>
+  <div class="empty-title">No PGs added yet</div>
+  <div class="empty-text">Add your first PG property to get started</div>
+  <button class="btn btn-primary" style="margin-top:16px" (click)="openAdd()">+ Add First PG</button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px" *ngIf="!loading && pgs.length > 0">
+  <div class="card pg-card" *ngFor="let pg of pgs">
+    <div style="padding:20px 24px;border-bottom:1px solid var(--gray-100);display:flex;align-items:flex-start;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:44px;height:44px;background:var(--primary-light);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:1.5rem">🏢</div>
+        <div>
+          <div style="font-weight:700;font-size:1rem;color:var(--gray-900)">{{ pg.name }}</div>
+          <div style="font-size:0.8rem;color:var(--gray-500);margin-top:2px">{{ pg.totalRooms || '—' }} rooms</div>
+        </div>
+      </div>
+      <button class="btn btn-outline btn-sm" (click)="openEdit(pg)">✏️ Edit</button>
+    </div>
+    <div class="card-body">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="font-size:1rem;flex-shrink:0;margin-top:1px">📍</span>
+          <span style="font-size:0.875rem;color:var(--gray-600)">{{ pg.address }}</span>
+        </div>
+        <div *ngIf="pg.phone" style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:1rem">📞</span>
+          <span style="font-size:0.875rem;color:var(--gray-600)">{{ pg.phone }}</span>
+        </div>
+        <div *ngIf="pg.amenities" style="display:flex;gap:8px;align-items:flex-start">
+          <span style="font-size:1rem;flex-shrink:0;margin-top:1px">⭐</span>
+          <span style="font-size:0.8rem;color:var(--gray-500)">{{ pg.amenities }}</span>
+        </div>
+        <div *ngIf="pg.rules" style="display:flex;gap:8px;align-items:flex-start">
+          <span style="font-size:1rem;flex-shrink:0;margin-top:1px">📜</span>
+          <span style="font-size:0.8rem;color:var(--gray-500)">{{ pg.rules }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" *ngIf="showModal" (click)="showModal=false">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">{{ editMode ? '✏️ Edit PG' : '🏢 Add New PG' }}</span>
+      <button class="modal-close" (click)="showModal=false">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">PG Name *</label>
+        <input class="form-control" [(ngModel)]="form.name" placeholder="e.g. Sunrise Boys PG">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Address *</label>
+        <textarea class="form-control" [(ngModel)]="form.address" placeholder="Full address" rows="2"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input class="form-control" [(ngModel)]="form.phone" placeholder="Contact number">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Total Rooms</label>
+          <input class="form-control" type="number" [(ngModel)]="form.totalRooms" placeholder="e.g. 20">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Amenities</label>
+        <input class="form-control" [(ngModel)]="form.amenities" placeholder="WiFi, AC, Meals, Laundry...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">House Rules</label>
+        <textarea class="form-control" [(ngModel)]="form.rules" placeholder="No smoking, visitors allowed till 9pm..." rows="2"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="showModal=false">Cancel</button>
+      <button class="btn btn-primary" (click)="save()" [disabled]="saving || !form.name || !form.address">
+        <span *ngIf="saving" class="spinner"></span>
+        {{ saving ? 'Saving...' : (editMode ? 'Update PG' : 'Add PG') }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(java -version)",
+      "Bash(npm --version)",
+      "Bash(mvn --version)",
+      "Bash(dir C:\\\\Users\\\\2485139\\\\pg)",
+      "Bash(mvn clean:*)",
+      "Bash(npm install:*)",
+      "Bash(npx ng:*)",
+      "Bash(grep -v \"^--$\")",
+      "Bash(netstat -ano)",
+      "Bash(powershell.exe -Command \"Stop-Process -Id 27548 -Force; Stop-Process -Id 14196 -Force; Write-Host 'Done'\")",
+      "Bash(powershell.exe -Command \"Stop-Process -Id 28872 -Force -ErrorAction SilentlyContinue; Write-Host 'Stopped old backend'\")",
+      "Bash(mvn spring-boot:run -q)",
+      "Bash(echo \"Backend starting in background, PID: $!\")",
+      "Bash(mvn spring-boot:run)"
+    ]
+  }
+}

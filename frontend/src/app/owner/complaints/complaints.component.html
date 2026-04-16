@@ -1,0 +1,93 @@
+<div class="page-header">
+  <div><h1>Complaints</h1><p>Review and respond to tenant complaints</p></div>
+  <div style="display:flex;gap:8px">
+    <span class="badge badge-red" style="font-size:0.8rem;padding:5px 12px">{{ countByStatus('OPEN') }} Open</span>
+    <span class="badge badge-amber" style="font-size:0.8rem;padding:5px 12px">{{ countByStatus('IN_PROGRESS') }} In Progress</span>
+  </div>
+</div>
+
+<div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap">
+  <button class="btn btn-sm" [class.btn-primary]="filterStatus===''" [class.btn-outline]="filterStatus!==''" (click)="filterStatus=''">All ({{ complaints.length }})</button>
+  <button class="btn btn-sm" *ngFor="let s of statuses"
+    [class.btn-primary]="filterStatus===s" [class.btn-outline]="filterStatus!==s" (click)="filterStatus=s">
+    {{ s.replace('_',' ') }}
+  </button>
+</div>
+
+<div *ngIf="loading" style="text-align:center;padding:60px"><div class="spinner spinner-dark"></div></div>
+
+<div *ngIf="!loading && filtered.length===0" class="empty-state card" style="padding:60px">
+  <div class="empty-icon">📋</div>
+  <div class="empty-title">No complaints found</div>
+  <div class="empty-text">{{ filterStatus ? 'No complaints with this status' : 'All tenants are happy!' }}</div>
+</div>
+
+<div class="content-grid-2" *ngIf="!loading && filtered.length>0">
+  <div class="card complaint-card" *ngFor="let c of filtered" (click)="open(c)">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span>{{ badgeIcon(c.status) }}</span>
+        <span style="font-weight:700;font-size:0.95rem;color:var(--gray-900)">{{ c.title }}</span>
+      </div>
+      <span class="badge" [ngClass]="badgeClass(c.status)">{{ c.status.replace('_',' ') }}</span>
+    </div>
+    <div class="card-body" style="padding:14px 20px">
+      <p style="color:var(--gray-600);font-size:0.875rem;margin-bottom:10px;line-height:1.5">{{ c.description }}</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.8rem;color:var(--gray-400)">
+        <span>👤 {{ c.tenant?.name || 'Unknown' }}</span>
+        <span>{{ c.createdAt | date:'dd MMM, hh:mm a' }}</span>
+      </div>
+      <div *ngIf="c.imageUrls?.length" style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+        <img *ngFor="let img of c.imageUrls.slice(0,3)" [src]="'http://localhost:8082'+img"
+             style="width:48px;height:48px;border-radius:6px;object-fit:cover;border:1px solid var(--gray-200)">
+        <div *ngIf="c.imageUrls.length>3" style="width:48px;height:48px;border-radius:6px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:var(--gray-500)">
+          +{{ c.imageUrls.length-3 }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" *ngIf="showModal && selected" (click)="showModal=false">
+  <div class="modal" style="max-width:580px" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">📋 {{ selected.title }}</span>
+      <button class="modal-close" (click)="showModal=false">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:16px;padding:12px;background:var(--gray-50);border-radius:var(--radius-sm)">
+        <div style="font-size:0.75rem;color:var(--gray-400);margin-bottom:4px">Description</div>
+        <p style="color:var(--gray-700);font-size:0.875rem;margin:0">{{ selected.description }}</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+        <div><span class="text-xs text-muted">Tenant</span><div class="font-semibold">{{ selected.tenant?.name }}</div></div>
+        <div><span class="text-xs text-muted">Submitted</span><div class="font-semibold">{{ selected.createdAt | date:'dd MMM yyyy' }}</div></div>
+      </div>
+      <div *ngIf="selected.imageUrls?.length" style="margin-bottom:16px">
+        <div style="font-size:0.75rem;color:var(--gray-400);margin-bottom:8px">Attached Photos</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <img *ngFor="let img of selected.imageUrls" [src]="'http://localhost:8082'+img"
+               style="width:80px;height:80px;border-radius:8px;object-fit:cover;border:1px solid var(--gray-200)">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Update Status</label>
+        <select class="form-control" [(ngModel)]="newStatus">
+          <option *ngFor="let s of statuses" [value]="s">{{ s.replace('_',' ') }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Your Note / Response</label>
+        <textarea class="form-control" [(ngModel)]="ownerNote" rows="3" placeholder="Add a note for the tenant..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="showModal=false">Close</button>
+      <button class="btn btn-primary" (click)="update()" [disabled]="saving">
+        <span *ngIf="saving" class="spinner"></span>
+        {{ saving ? 'Updating...' : 'Update Status' }}
+      </button>
+    </div>
+  </div>
+</div>

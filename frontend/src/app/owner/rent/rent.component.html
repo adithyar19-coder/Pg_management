@@ -1,0 +1,90 @@
+<div class="page-header">
+  <div><h1>Rent Tracker</h1><p>Monitor and manage all rent payments</p></div>
+</div>
+
+<!-- Summary cards -->
+<div class="stats-grid" style="margin-bottom:20px">
+  <div class="stat-card">
+    <div class="stat-icon amber">⏳</div>
+    <div class="stat-info">
+      <div class="stat-label">Pending Amount</div>
+      <div class="stat-value" style="font-size:1.4rem">₹{{ totalPending() | number:'1.0-0' }}</div>
+      <div class="stat-sub">{{ pendingCount() }} records</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green">✅</div>
+    <div class="stat-info">
+      <div class="stat-label">Collected Amount</div>
+      <div class="stat-value" style="font-size:1.4rem">₹{{ totalCollected() | number:'1.0-0' }}</div>
+      <div class="stat-sub">{{ paidCount() }} payments</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon blue">📊</div>
+    <div class="stat-info">
+      <div class="stat-label">Total Records</div>
+      <div class="stat-value">{{ records.length }}</div>
+      <div class="stat-sub">All time</div>
+    </div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+  <input class="form-control" style="max-width:240px" placeholder="🔍 Search tenant or month..." [(ngModel)]="search">
+  <button class="btn btn-sm" [class.btn-primary]="filterStatus===''" [class.btn-outline]="filterStatus!==''" (click)="filterStatus=''">All</button>
+  <button class="btn btn-sm" [class.btn-warning]="filterStatus==='PENDING'" [class.btn-outline]="filterStatus!=='PENDING'" (click)="filterStatus='PENDING'">Pending</button>
+  <button class="btn btn-sm" [class.btn-success]="filterStatus==='PAID'" [class.btn-outline]="filterStatus!=='PAID'" (click)="filterStatus='PAID'">Paid</button>
+  <button class="btn btn-sm" [class.btn-danger]="filterStatus==='OVERDUE'" [class.btn-outline]="filterStatus!=='OVERDUE'" (click)="filterStatus='OVERDUE'">Overdue</button>
+</div>
+
+<div *ngIf="loading" style="text-align:center;padding:60px"><div class="spinner spinner-dark"></div></div>
+
+<div *ngIf="!loading && filtered.length===0" class="empty-state card" style="padding:60px">
+  <div class="empty-icon">💰</div>
+  <div class="empty-title">No rent records found</div>
+  <div class="empty-text">Records are auto-generated when tenants are assigned</div>
+</div>
+
+<div class="card" *ngIf="!loading && filtered.length>0">
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr><th>Tenant</th><th>Room</th><th>PG</th><th>Month</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of filtered">
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:28px;height:28px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:var(--primary)">
+                {{ r.tenant?.name?.charAt(0)?.toUpperCase() }}
+              </div>
+              <span style="font-weight:600">{{ r.tenant?.name }}</span>
+            </div>
+          </td>
+          <td>Room {{ r.room?.roomNumber || '—' }}</td>
+          <td style="color:var(--gray-500)">{{ r.room?.pg?.name || '—' }}</td>
+          <td><span class="badge badge-purple">{{ r.month }}</span></td>
+          <td style="font-weight:700;color:var(--primary)">₹{{ r.amount | number }}</td>
+          <td style="font-size:0.8rem;color:var(--gray-500)">{{ r.dueDate | date:'dd MMM yyyy' }}</td>
+          <td>
+            <span class="badge" [ngClass]="statusClass(r.status)">
+              {{ r.status === 'PAID' ? '✓ ' : (r.status === 'OVERDUE' ? '⚠ ' : '⏳ ') }}{{ r.status }}
+            </span>
+          </td>
+          <td>
+            <button *ngIf="r.status!=='PAID'" class="btn btn-success btn-sm"
+                    (click)="markPaid(r.id)" [disabled]="saving===r.id">
+              <span *ngIf="saving===r.id" class="spinner"></span>
+              {{ saving===r.id ? '' : '✓ Mark Paid' }}
+            </button>
+            <span *ngIf="r.status==='PAID'" style="color:var(--secondary);font-size:0.8rem;font-weight:600">
+              Paid {{ r.paidDate | date:'dd MMM' }}
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

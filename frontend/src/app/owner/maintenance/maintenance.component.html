@@ -1,0 +1,85 @@
+<div class="page-header">
+  <div><h1>Maintenance Requests</h1><p>Track and manage tenant maintenance issues</p></div>
+  <div style="display:flex;gap:8px">
+    <span class="badge badge-amber" style="font-size:0.8rem;padding:5px 12px">{{ countByStatus('PENDING') }} Pending</span>
+    <span class="badge badge-blue" style="font-size:0.8rem;padding:5px 12px">{{ countByStatus('IN_PROGRESS') }} In Progress</span>
+  </div>
+</div>
+
+<div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap">
+  <button class="btn btn-sm" [class.btn-primary]="filterStatus===''" [class.btn-outline]="filterStatus!==''" (click)="filterStatus=''">All</button>
+  <button class="btn btn-sm" *ngFor="let s of statuses"
+    [class.btn-primary]="filterStatus===s" [class.btn-outline]="filterStatus!==s" (click)="filterStatus=s">
+    {{ s.replace('_',' ') }}
+  </button>
+</div>
+
+<div *ngIf="loading" style="text-align:center;padding:60px"><div class="spinner spinner-dark"></div></div>
+
+<div *ngIf="!loading && filtered.length===0" class="empty-state card" style="padding:60px">
+  <div class="empty-icon">🔧</div>
+  <div class="empty-title">No maintenance requests</div>
+  <div class="empty-text">Everything is running smoothly!</div>
+</div>
+
+<div class="card" *ngIf="!loading && filtered.length>0">
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Title</th><th>Tenant</th><th>Room</th><th>Priority</th><th>Status</th><th>Assigned To</th><th>Date</th><th></th></tr></thead>
+      <tbody>
+        <tr *ngFor="let r of filtered">
+          <td><span style="font-weight:600">{{ r.title }}</span></td>
+          <td>{{ r.tenant?.name || '—' }}</td>
+          <td>{{ r.room?.roomNumber ? 'Room '+r.room!.roomNumber : '—' }}</td>
+          <td><span class="badge" [ngClass]="priorityClass(r.priority)">{{ r.priority }}</span></td>
+          <td><span class="badge" [ngClass]="statusClass(r.status)">{{ r.status.replace('_',' ') }}</span></td>
+          <td>{{ r.assignedTo || '—' }}</td>
+          <td style="font-size:0.8rem;color:var(--gray-400)">{{ r.createdAt | date:'dd MMM' }}</td>
+          <td><button class="btn btn-outline btn-sm" (click)="open(r)">Manage</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" *ngIf="showModal && selected" (click)="showModal=false">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">🔧 {{ selected.title }}</span>
+      <button class="modal-close" (click)="showModal=false">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:12px;background:var(--gray-50);border-radius:var(--radius-sm);margin-bottom:16px">
+        <p style="margin:0;font-size:0.875rem;color:var(--gray-700)">{{ selected.issue }}</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:0.875rem">
+        <div><span class="text-muted text-xs">Tenant</span><div class="font-semibold">{{ selected.tenant?.name }}</div></div>
+        <div><span class="text-muted text-xs">Priority</span><div><span class="badge" [ngClass]="priorityClass(selected.priority)">{{ selected.priority }}</span></div></div>
+      </div>
+      <div *ngIf="selected.imageUrls?.length" style="margin-bottom:16px">
+        <div style="font-size:0.75rem;color:var(--gray-400);margin-bottom:8px">Photos</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <img *ngFor="let img of selected.imageUrls" [src]="'http://localhost:8082'+img" style="width:72px;height:72px;border-radius:8px;object-fit:cover">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Update Status</label>
+        <select class="form-control" [(ngModel)]="newStatus">
+          <option *ngFor="let s of statuses" [value]="s">{{ s.replace('_',' ') }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Assigned To</label>
+        <input class="form-control" [(ngModel)]="assignedTo" placeholder="e.g. Ravi Plumber">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="showModal=false">Close</button>
+      <button class="btn btn-primary" (click)="update()" [disabled]="saving">
+        <span *ngIf="saving" class="spinner"></span>
+        {{ saving ? 'Updating...' : 'Update' }}
+      </button>
+    </div>
+  </div>
+</div>

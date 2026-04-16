@@ -1,0 +1,52 @@
+<div class="app-shell">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🏠</div>
+      <h2>PG Manager</h2>
+      <p>Resident Portal</p>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="avatar">{{ initials }}</div>
+      <div class="user-info">
+        <div class="user-name">{{ user?.name }}</div>
+        <div class="user-role">Tenant / Resident</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-label">My Portal</div>
+        <a *ngFor="let item of navItems" class="nav-item"
+           [routerLink]="item.route" routerLinkActive="active">
+          <span class="nav-icon">{{ item.icon }}</span>
+          {{ item.label }}
+          <span *ngIf="item.badge && unreadCount > 0" class="nav-badge">{{ unreadCount }}</span>
+        </a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="logout-btn" (click)="logout()">
+        <span>🚪</span> Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-area">
+    <header class="topbar">
+      <span class="topbar-title">Resident Portal</span>
+      <span class="topbar-spacer"></span>
+      <div class="topbar-actions">
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--secondary-light);border-radius:var(--radius-full)">
+          <span style="font-size:0.8rem;font-weight:600;color:var(--secondary)">👤 {{ user?.name }}</span>
+        </div>
+      </div>
+    </header>
+    <main class="page-content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

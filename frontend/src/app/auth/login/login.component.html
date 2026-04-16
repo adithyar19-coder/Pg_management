@@ -1,0 +1,95 @@
+<div class="auth-page">
+  <!-- Left Panel -->
+  <div class="auth-left">
+    <div class="auth-left-content">
+      <div style="font-size:3.5rem;margin-bottom:24px">🏠</div>
+      <h2>Manage your PG with ease</h2>
+      <p>The complete platform for hostel & PG management — track rooms, rent, complaints and more.</p>
+      <ul class="feature-list">
+        <li><span class="check">✓</span> Owner & Tenant role-based dashboards</li>
+        <li><span class="check">✓</span> Real-time complaint & maintenance tracking</li>
+        <li><span class="check">✓</span> Automated rent records & payment tracking</li>
+        <li><span class="check">✓</span> Smart announcements & notifications</li>
+        <li><span class="check">✓</span> Photo uploads for complaints</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="auth-right">
+    <div class="auth-form-wrap">
+      <div class="auth-logo">
+        <div class="auth-logo-icon">🏠</div>
+        <h1>PG Manager</h1>
+      </div>
+
+      <h2 class="auth-title">Welcome back</h2>
+      <p class="auth-subtitle">Sign in to your account to continue</p>
+
+      <!-- ── Demo Login Cards ── -->
+      <div style="margin-bottom:24px">
+        <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray-400);margin-bottom:10px">
+          ⚡ Quick Demo Login
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button *ngFor="let acc of demoAccounts"
+                  (click)="loginAs(acc)"
+                  [disabled]="loading"
+                  [style.border-color]="acc.color"
+                  class="demo-btn"
+                  style="padding:14px;border:2px solid;border-radius:var(--radius);background:white;cursor:pointer;text-align:left;transition:all .15s;position:relative;overflow:hidden">
+            <div style="font-size:1.5rem;margin-bottom:4px">{{ acc.icon }}</div>
+            <div style="font-weight:700;font-size:0.875rem" [style.color]="acc.color">{{ acc.label }}</div>
+            <div style="font-size:0.7rem;color:var(--gray-400);margin-top:2px">{{ acc.email }}</div>
+            <div style="position:absolute;top:6px;right:8px;font-size:0.65rem;background:var(--gray-100);color:var(--gray-500);padding:2px 6px;border-radius:var(--radius-full);font-weight:600">
+              1-click
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <div style="flex:1;height:1px;background:var(--gray-200)"></div>
+        <span style="font-size:0.75rem;color:var(--gray-400);font-weight:500">or sign in manually</span>
+        <div style="flex:1;height:1px;background:var(--gray-200)"></div>
+      </div>
+
+      <div *ngIf="error" class="alert alert-error">
+        <span>⚠️</span> {{ error }}
+      </div>
+
+      <form (ngSubmit)="submit()" #f="ngForm">
+        <div class="form-group">
+          <label class="form-label">Email address</label>
+          <input type="email" class="form-control" placeholder="you@example.com"
+                 [(ngModel)]="email" name="email" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-control" placeholder="••••••••"
+                 [(ngModel)]="password" name="password" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full btn-lg" [disabled]="loading" style="margin-top:8px">
+          <span *ngIf="loading" class="spinner"></span>
+          <span>{{ loading ? 'Signing in...' : 'Sign In →' }}</span>
+        </button>
+      </form>
+
+      <!-- Credentials hint -->
+      <div style="margin-top:20px;padding:14px;background:var(--gray-50);border-radius:var(--radius);border:1px dashed var(--gray-200)">
+        <div style="font-size:0.75rem;font-weight:700;color:var(--gray-500);margin-bottom:8px">📋 Demo Credentials</div>
+        <div style="display:flex;flex-direction:column;gap:4px;font-size:0.75rem;font-family:monospace;color:var(--gray-600)">
+          <div>🏢 <strong>Owner:</strong> owner&#64;demo.com / demo123</div>
+          <div>👤 <strong>Tenant:</strong> tenant&#64;demo.com / demo123</div>
+        </div>
+      </div>
+
+      <p style="text-align:center;margin-top:16px;color:var(--gray-500);font-size:0.875rem">
+        Don't have an account?
+        <a routerLink="/register" style="font-weight:600">Create one free</a>
+      </p>
+    </div>
+  </div>
+</div>

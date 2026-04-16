@@ -1,0 +1,81 @@
+<div class="auth-page">
+  <!-- Left Panel -->
+  <div class="auth-left">
+    <div class="auth-left-content">
+      <div style="font-size:3.5rem;margin-bottom:24px">🏠</div>
+      <h2>Join PG Manager today</h2>
+      <p>Create your account and take full control of your property or residence.</p>
+      <ul class="feature-list">
+        <li><span class="check">🏢</span> <strong>Owners</strong> manage multiple PGs, rooms & tenants</li>
+        <li><span class="check">👤</span> <strong>Tenants</strong> track rent, raise complaints & requests</li>
+        <li><span class="check">✓</span> Instant setup — no credit card needed</li>
+        <li><span class="check">✓</span> Secure JWT-based authentication</li>
+        <li><span class="check">✓</span> Works on any device</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="auth-right">
+    <div class="auth-form-wrap">
+      <div class="auth-logo">
+        <div class="auth-logo-icon">🏠</div>
+        <h1>PG Manager</h1>
+      </div>
+
+      <h2 class="auth-title">Create your account</h2>
+      <p class="auth-subtitle">Choose your role and get started</p>
+
+      <!-- Role Selector -->
+      <div class="role-selector">
+        <div class="role-card" [class.selected]="role==='OWNER'" (click)="selectRole('OWNER')">
+          <div class="role-icon">🏢</div>
+          <div class="role-name">Property Owner</div>
+          <div class="role-desc">Manage PGs & tenants</div>
+        </div>
+        <div class="role-card" [class.selected]="role==='TENANT'" (click)="selectRole('TENANT')">
+          <div class="role-icon">👤</div>
+          <div class="role-name">Tenant / Resident</div>
+          <div class="role-desc">View room & requests</div>
+        </div>
+      </div>
+
+      <div *ngIf="error" class="alert alert-error">
+        <span>⚠️</span> {{ error }}
+      </div>
+
+      <form (ngSubmit)="submit()">
+        <div class="form-group">
+          <label class="form-label">Full Name <span style="color:var(--danger)">*</span></label>
+          <input type="text" class="form-control" placeholder="John Doe"
+                 [(ngModel)]="name" name="name" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email address <span style="color:var(--danger)">*</span></label>
+          <input type="email" class="form-control" placeholder="you@example.com"
+                 [(ngModel)]="email" name="email" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          <input type="tel" class="form-control" placeholder="+91 98765 43210"
+                 [(ngModel)]="phone" name="phone">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password <span style="color:var(--danger)">*</span></label>
+          <input type="password" class="form-control" placeholder="Min. 6 characters"
+                 [(ngModel)]="password" name="password" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full btn-lg" [disabled]="loading" style="margin-top:8px">
+          <span *ngIf="loading" class="spinner"></span>
+          <span>{{ loading ? 'Creating account...' : 'Create Account →' }}</span>
+        </button>
+      </form>
+
+      <p style="text-align:center;margin-top:20px;color:var(--gray-500);font-size:0.875rem">
+        Already have an account?
+        <a routerLink="/login" style="font-weight:600">Sign in</a>
+      </p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,103 @@
+<div *ngIf="loading" style="display:flex;align-items:center;justify-content:center;height:200px">
+  <div class="spinner spinner-dark"></div>
+</div>
+
+<div *ngIf="!loading">
+  <div class="page-header">
+    <div>
+      <h1>Welcome back, {{ (user?.name?.split(' ') ?? [''])[0] }}! 👋</h1>
+      <p>Here's your residence summary at a glance.</p>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card" [style.border-left]="stats.hasRoom ? '4px solid var(--secondary)' : '4px solid var(--danger)'">
+      <div class="stat-icon" [ngClass]="stats.hasRoom ? 'green' : 'red'">🚪</div>
+      <div class="stat-info">
+        <div class="stat-label">My Room</div>
+        <div class="stat-value" style="font-size:1.4rem">{{ stats.roomNumber }}</div>
+        <div class="stat-sub">{{ stats.pgName }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon amber">💰</div>
+      <div class="stat-info">
+        <div class="stat-label">Pending Rent</div>
+        <div class="stat-value">{{ stats.pendingRent || 0 }}</div>
+        <div class="stat-sub">{{ stats.pendingRent > 0 ? 'Payment due' : 'All clear!' }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon red">📋</div>
+      <div class="stat-info">
+        <div class="stat-label">Open Complaints</div>
+        <div class="stat-value">{{ stats.openComplaints || 0 }}</div>
+        <div class="stat-sub">{{ stats.openComplaints > 0 ? 'Awaiting response' : 'All resolved' }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon purple">🔔</div>
+      <div class="stat-info">
+        <div class="stat-label">Unread Notifications</div>
+        <div class="stat-value">{{ stats.unreadNotifications || 0 }}</div>
+        <div class="stat-sub">New updates</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick actions -->
+  <div style="display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap">
+    <a routerLink="/tenant/complaints" class="btn btn-primary">📋 Raise Complaint</a>
+    <a routerLink="/tenant/maintenance" class="btn btn-outline">🔧 Request Maintenance</a>
+    <a routerLink="/tenant/rent" class="btn btn-outline">💰 View Rent</a>
+    <a routerLink="/tenant/notifications" class="btn btn-outline">🔔 Notifications</a>
+  </div>
+
+  <div class="content-grid-2">
+    <!-- Recent Complaints -->
+    <div class="card">
+      <div class="card-header" style="justify-content:space-between">
+        <span class="card-title">📋 My Complaints</span>
+        <a routerLink="/tenant/complaints" class="btn btn-outline btn-sm">View all</a>
+      </div>
+      <div *ngIf="complaints.length===0" class="empty-state" style="padding:28px">
+        <div class="empty-icon">🎉</div>
+        <div class="empty-title">No complaints raised</div>
+      </div>
+      <div class="table-wrapper" *ngIf="complaints.length>0">
+        <table>
+          <thead><tr><th>Title</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let c of complaints">
+              <td style="font-weight:500">{{ c.title }}</td>
+              <td><span class="badge" [ngClass]="badgeClass(c.status)">{{ c.status.replace('_',' ') }}</span></td>
+              <td style="font-size:0.8rem;color:var(--gray-400)">{{ c.createdAt | date:'dd MMM' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Announcements -->
+    <div class="card">
+      <div class="card-header" style="justify-content:space-between">
+        <span class="card-title">📢 Announcements</span>
+        <a routerLink="/tenant/announcements" class="btn btn-outline btn-sm">View all</a>
+      </div>
+      <div *ngIf="announcements.length===0" class="empty-state" style="padding:28px">
+        <div class="empty-icon">📢</div>
+        <div class="empty-title">No announcements</div>
+      </div>
+      <div style="padding:12px 16px;display:flex;flex-direction:column;gap:10px" *ngIf="announcements.length>0">
+        <div *ngFor="let a of announcements" style="padding:12px;background:var(--gray-50);border-radius:var(--radius-sm);border-left:3px solid var(--primary)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-weight:600;font-size:0.875rem">{{ a.title }}</span>
+            <span class="badge" [ngClass]="priorityClass(a.priority)">{{ a.priority }}</span>
+          </div>
+          <p style="font-size:0.8rem;color:var(--gray-500);margin:0;line-height:1.4">{{ a.message }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
