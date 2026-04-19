@@ -7,7 +7,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableScheduling
 public class PgManagementApplication {
-    public static void main(String[] args) {
+    public static void main(String[] args)
+    {
         SpringApplication.run(PgManagementApplication.class, args);
     }
 }
+
+

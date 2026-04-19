@@ -37,9 +37,11 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
+            // H2 console is served inside iframes; disable frame-options so it renders
+            .headers(h -> h.frameOptions(fo -> fo.disable()))
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/files/**").permitAll()
+                .requestMatchers("/api/auth/**", "/api/files/**", "/h2-console/**").permitAll()
                 .requestMatchers("/api/owner/**").hasRole("OWNER")
                 .requestMatchers("/api/tenant/**").hasRole("TENANT")
                 .anyRequest().authenticated()

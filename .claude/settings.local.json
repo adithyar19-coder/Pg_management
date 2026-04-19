@@ -19,7 +19,18 @@
       "Bash(mvn compile:*)",
       "Bash(powershell.exe -Command \"Get-Process java -ErrorAction SilentlyContinue | Select-Object Id,ProcessName | Format-Table -AutoSize\")",
       "Bash(powershell.exe -Command \"Stop-Process -Id 15144 -Force -ErrorAction SilentlyContinue; Write-Host Killed\")",
-      "Bash(powershell.exe -Command \"Stop-Process -Id 13160 -Force -ErrorAction SilentlyContinue; Stop-Process -Id 14324 -Force -ErrorAction SilentlyContinue; Write-Host 'Killed my servers \\(13160, 14324\\). Left your IntelliJ Angular \\(19952\\) running.'\")"
+      "Bash(powershell.exe -Command \"Stop-Process -Id 13160 -Force -ErrorAction SilentlyContinue; Stop-Process -Id 14324 -Force -ErrorAction SilentlyContinue; Write-Host 'Killed my servers \\(13160, 14324\\). Left your IntelliJ Angular \\(19952\\) running.'\")",
+      "Bash(powershell.exe -Command \"Get-Service -Name mysql*,MySQL* -ErrorAction SilentlyContinue | Format-Table Name,Status,StartType -AutoSize\")",
+      "Bash(powershell.exe -Command \"Start-Service -Name MySQL80 -ErrorAction Stop; Get-Service -Name MySQL80 | Format-Table Name,Status -AutoSize\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem 'C:\\\\Program Files\\\\MySQL','C:\\\\Program Files \\(x86\\)\\\\MySQL' -Filter 'mysqld.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 3 FullName\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem 'C:\\\\ProgramData\\\\MySQL' -Filter 'my.ini' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 3 FullName\")",
+      "Bash(powershell.exe -Command \"Get-Service MySQL80 | Format-Table Name,Status,StartType -AutoSize\")",
+      "Bash(net start *)",
+      "Bash(powershell.exe -Command \"Start-Process 'C:\\\\Program Files\\\\MySQL\\\\MySQL Server 8.0\\\\bin\\\\mysqld.exe' -ArgumentList '--defaults-file=C:\\\\ProgramData\\\\MySQL\\\\MySQL Server 8.0\\\\my.ini' -WindowStyle Hidden; Start-Sleep 5\")",
+      "Bash(powershell.exe -Command \"[Environment]::GetFolderPath\\('Desktop'\\)\")",
+      "Bash(powershell.exe -Command \"Get-Process java -ErrorAction SilentlyContinue | Stop-Process -Force; Remove-Item -Recurse -Force 'C:\\\\Users\\\\2485139\\\\pg\\\\backend\\\\data' -ErrorAction SilentlyContinue; Write-Host 'Cleaned.'\")",
+      "Bash(curl -s -X POST http://localhost:8082/api/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"owner@demo.com\\\\\",\\\\\"password\\\\\":\\\\\"demo123\\\\\"}\")",
+      "Bash(powershell.exe -Command \"Stop-Process -Id 4696 -Force -ErrorAction SilentlyContinue; Start-Sleep 1; netstat -ano | findstr ':8082' | findstr LISTENING\")"
     ]
   }
 }
