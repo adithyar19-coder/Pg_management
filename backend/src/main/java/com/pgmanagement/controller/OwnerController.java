@@ -95,6 +95,38 @@ public class OwnerController {
         return ResponseEntity.ok(ApiResponse.success("OK", ownerService.getAllTenants(getUser(ud))));
     }
 
+    // ── Vacate request review ────────────────────────────
+    @GetMapping("/vacate-requests")
+    public ResponseEntity<ApiResponse<List<RoomAssignment>>> getPendingVacateRequests(@AuthenticationPrincipal UserDetails ud) {
+        return ResponseEntity.ok(ApiResponse.success("OK", ownerService.getPendingVacateRequests(getUser(ud))));
+    }
+
+    @PostMapping("/vacate-requests/{id}/approve")
+    public ResponseEntity<ApiResponse<RoomAssignment>> approveVacate(@PathVariable Long id,
+                                                                       @AuthenticationPrincipal UserDetails ud) {
+        return ResponseEntity.ok(ApiResponse.success("Vacate approved",
+                ownerService.approveVacate(id, getUser(ud))));
+    }
+
+    @PostMapping("/vacate-requests/{id}/reject")
+    public ResponseEntity<ApiResponse<RoomAssignment>> rejectVacate(@PathVariable Long id,
+                                                                      @RequestBody(required = false) Map<String, String> body,
+                                                                      @AuthenticationPrincipal UserDetails ud) {
+        String note = body != null ? body.get("note") : null;
+        return ResponseEntity.ok(ApiResponse.success("Vacate rejected",
+                ownerService.rejectVacate(id, getUser(ud), note)));
+    }
+
+    /** Owner-initiated eviction (no tenant request needed). */
+    @PostMapping("/assignments/{id}/vacate")
+    public ResponseEntity<ApiResponse<RoomAssignment>> manualVacate(@PathVariable Long id,
+                                                                      @RequestBody(required = false) Map<String, String> body,
+                                                                      @AuthenticationPrincipal UserDetails ud) {
+        String note = body != null ? body.get("note") : null;
+        return ResponseEntity.ok(ApiResponse.success("Tenant vacated",
+                ownerService.manualVacate(id, getUser(ud), note)));
+    }
+
     @GetMapping("/users/tenants")
     public ResponseEntity<ApiResponse<List<User>>> getAllTenantUsers() {
         return ResponseEntity.ok(ApiResponse.success("OK",

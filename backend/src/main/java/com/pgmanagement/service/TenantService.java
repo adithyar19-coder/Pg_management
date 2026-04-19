@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +28,47 @@ public class TenantService {
     // ── Room ─────────────────────────────────────────────
     public Optional<RoomAssignment> getMyRoom(User tenant) {
         return roomAssignmentRepository.findByTenantAndIsActive(tenant, true);
+    }
+
+    // ── Vacate request workflow ──────────────────────────
+    @Transactional
+    public RoomAssignment requestVacate(User tenant, LocalDate requestedLeaveDate, String reason) {
+        RoomAssignment assignment = roomAssignmentRepository.findByTenantAndIsActive(tenant, true)
+                .orElseThrow(() -> new IllegalArgumentException("You are not currently assigned to any room"));
+        if (assignment.getVacateRequestedAt() != null) {
+            throw new IllegalArgumentException("You already have a pending vacate request");
+        }
+        if (requestedLeaveDate == null || requestedLeaveDate.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Requested leave date must be today or later");
+        }
+        assignment.setVacateRequestedAt(LocalDateTime.now());
+        assignment.setRequestedLeaveDate(requestedLeaveDate);
+        assignment.setVacateReason(reason);
+        RoomAssignment saved = roomAssignmentRepository.save(assignment);
+
+        // Notify the PG owner so they see it on their dashboard
+        User owner = assignment.getRoom().getPg().getOwner();
+        Notification notif = Notification.builder()
+                .user(owner)
+                .message(tenant.getName() + " has requested to vacate Room "
+                        + assignment.getRoom().getRoomNumber() + " on " + requestedLeaveDate)
+                .type("VACATE_REQUEST")
+                .build();
+        notificationRepository.save(notif);
+        return saved;
+    }
+
+    @Transactional
+    public void cancelVacateRequest(User tenant) {
+        RoomAssignment assignment = roomAssignmentRepository.findByTenantAndIsActive(tenant, true)
+                .orElseThrow(() -> new IllegalArgumentException("You are not currently assigned to any room"));
+        if (assignment.getVacateRequestedAt() == null) {
+            throw new IllegalArgumentException("No pending vacate request to cancel");
+        }
+        assignment.setVacateRequestedAt(null);
+        assignment.setRequestedLeaveDate(null);
+        assignment.setVacateReason(null);
+        roomAssignmentRepository.save(assignment);
     }
 
     // ── Complaints ───────────────────────────────────────

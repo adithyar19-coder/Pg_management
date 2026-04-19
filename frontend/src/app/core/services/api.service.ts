@@ -74,6 +74,19 @@ export class ApiService {
   markRentPaid(id: number): Observable<ApiResponse<RentRecord>> {
     return this.http.patch<ApiResponse<RentRecord>>(`${BASE}/owner/rent/${id}/mark-paid`, {});
   }
+  // Vacate-request review (owner side)
+  getPendingVacateRequests(): Observable<ApiResponse<RoomAssignment[]>> {
+    return this.http.get<ApiResponse<RoomAssignment[]>>(`${BASE}/owner/vacate-requests`);
+  }
+  approveVacate(assignmentId: number): Observable<ApiResponse<RoomAssignment>> {
+    return this.http.post<ApiResponse<RoomAssignment>>(`${BASE}/owner/vacate-requests/${assignmentId}/approve`, {});
+  }
+  rejectVacate(assignmentId: number, note?: string): Observable<ApiResponse<RoomAssignment>> {
+    return this.http.post<ApiResponse<RoomAssignment>>(`${BASE}/owner/vacate-requests/${assignmentId}/reject`, { note });
+  }
+  manualVacate(assignmentId: number, note?: string): Observable<ApiResponse<RoomAssignment>> {
+    return this.http.post<ApiResponse<RoomAssignment>>(`${BASE}/owner/assignments/${assignmentId}/vacate`, { note });
+  }
 
   // ── Tenant ─────────────────────────────────────────
   tenantDashboard(): Observable<ApiResponse<any>> {
@@ -81,6 +94,13 @@ export class ApiService {
   }
   getMyRoom(): Observable<ApiResponse<RoomAssignment>> {
     return this.http.get<ApiResponse<RoomAssignment>>(`${BASE}/tenant/my-room`);
+  }
+  // Vacate-request flow (tenant side)
+  requestVacate(leaveDate: string, reason?: string): Observable<ApiResponse<RoomAssignment>> {
+    return this.http.post<ApiResponse<RoomAssignment>>(`${BASE}/tenant/vacate`, { leaveDate, reason });
+  }
+  cancelVacateRequest(): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${BASE}/tenant/vacate`);
   }
   raiseComplaint(data: any): Observable<ApiResponse<Complaint>> {
     return this.http.post<ApiResponse<Complaint>>(`${BASE}/tenant/complaints`, data);

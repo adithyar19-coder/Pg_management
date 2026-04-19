@@ -205,6 +205,105 @@ public class OwnerService {
         return roomAssignmentRepository.findByRoom_PgOwnerAndIsActive(owner, true);
     }
 
+    // ── Vacate request review ────────────────────────────
+    public List<RoomAssignment> getPendingVacateRequests(User owner) {
+        return roomAssignmentRepository
+                .findByRoom_PgOwnerAndIsActiveAndVacateRequestedAtIsNotNull(owner, true);
+    }
+
+    /**
+     * Approve a tenant-initiated vacate request: marks assignment inactive,
+     * sets leaveDate to the requested leave date, recomputes room occupancy,
+     * notifies the tenant.
+     */
+    @Transactional
+    public RoomAssignment approveVacate(Long assignmentId, User owner) {
+        RoomAssignment assignment = roomAssignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new RuntimeException("Assignment not found"));
+        if (!assignment.getRoom().getPg().getOwner().getId().equals(owner.getId())) {
+            throw new RuntimeException("Not authorized");
+        }
+        if (assignment.getVacateRequestedAt() == null) {
+            throw new IllegalArgumentException("This assignment has no pending vacate request");
+        }
+        return finalizeVacate(assignment, assignment.getRequestedLeaveDate(),
+                "Your vacate request for Room " + assignment.getRoom().getRoomNumber()
+                        + " has been APPROVED. Effective: " + assignment.getRequestedLeaveDate());
+    }
+
+    /**
+     * Reject a tenant-initiated vacate request: clears the request, notifies tenant.
+     */
+    @Transactional
+    public RoomAssignment rejectVacate(Long assignmentId, User owner, String note) {
+        RoomAssignment assignment = roomAssignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new RuntimeException("Assignment not found"));
+        if (!assignment.getRoom().getPg().getOwner().getId().equals(owner.getId())) {
+            throw new RuntimeException("Not authorized");
+        }
+        if (assignment.getVacateRequestedAt() == null) {
+            throw new IllegalArgumentException("This assignment has no pending vacate request");
+        }
+        assignment.setVacateRequestedAt(null);
+        assignment.setRequestedLeaveDate(null);
+        assignment.setVacateReason(null);
+        RoomAssignment saved = roomAssignmentRepository.save(assignment);
+
+        Notification notif = Notification.builder()
+                .user(assignment.getTenant())
+                .message("Your vacate request for Room " + assignment.getRoom().getRoomNumber()
+                        + " was rejected." + (note != null && !note.isBlank() ? " Note: " + note : ""))
+                .type("VACATE_REJECTED")
+                .build();
+        notificationRepository.save(notif);
+        return saved;
+    }
+
+    /**
+     * Manually evict a tenant (no request needed). Sets leaveDate=today.
+     * Use with care — for unpaid rent, policy violations, etc.
+     */
+    @Transactional
+    public RoomAssignment manualVacate(Long assignmentId, User owner, String note) {
+        RoomAssignment assignment = roomAssignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new RuntimeException("Assignment not found"));
+        if (!assignment.getRoom().getPg().getOwner().getId().equals(owner.getId())) {
+            throw new RuntimeException("Not authorized");
+        }
+        if (!Boolean.TRUE.equals(assignment.getIsActive())) {
+            throw new IllegalArgumentException("Assignment is already inactive");
+        }
+        return finalizeVacate(assignment, LocalDate.now(),
+                "You have been moved out of Room " + assignment.getRoom().getRoomNumber()
+                        + " by the owner." + (note != null && !note.isBlank() ? " Note: " + note : ""));
+    }
+
+    /** Shared finishing logic for approveVacate and manualVacate. */
+    private RoomAssignment finalizeVacate(RoomAssignment assignment, LocalDate effectiveDate, String tenantMessage) {
+        assignment.setIsActive(false);
+        assignment.setLeaveDate(effectiveDate != null ? effectiveDate : LocalDate.now());
+        // Clear vacate-request markers since the request is fulfilled
+        assignment.setVacateRequestedAt(null);
+        assignment.setRequestedLeaveDate(null);
+        assignment.setVacateReason(null);
+        RoomAssignment saved = roomAssignmentRepository.save(assignment);
+
+        // Recompute the room's "isOccupied" cached flag now that someone left
+        Room room = assignment.getRoom();
+        long active = roomAssignmentRepository.countByRoomAndIsActive(room, true);
+        int cap = room.getCapacity() != null ? room.getCapacity() : 1;
+        room.setIsOccupied(active >= cap);
+        roomRepository.save(room);
+
+        Notification notif = Notification.builder()
+                .user(assignment.getTenant())
+                .message(tenantMessage)
+                .type("VACATE")
+                .build();
+        notificationRepository.save(notif);
+        return saved;
+    }
+
     // ── Complaints ───────────────────────────────────────
     public List<Complaint> getAllComplaints(User owner) {
         return complaintRepository.findByPgOwnerOrderByCreatedAtDesc(owner);

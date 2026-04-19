@@ -1,10 +1,51 @@
 <div class="page-header">
   <div><h1>Tenants</h1><p>View and manage all active tenants</p></div>
-  <button class="btn btn-primary" (click)="showModal=true;selectedRoomId='';selectedTenantId=''">+ Assign Tenant</button>
+  <button class="btn btn-primary" (click)="openAssignModal()">+ Assign Tenant</button>
 </div>
 
-<div style="margin-bottom:16px">
+<!-- ─────────────────────────────────────────────────────────────── -->
+<!-- Pending vacate requests panel (only when there's at least one)  -->
+<!-- ─────────────────────────────────────────────────────────────── -->
+<div *ngIf="vacateRequests.length > 0" class="card" style="margin-bottom:20px;border-left:4px solid var(--warning);background:#fffbeb">
+  <div style="padding:14px 18px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;gap:10px">
+    <span style="font-size:1.25rem">⏳</span>
+    <span style="font-weight:700;color:#92400e">Pending Vacate Requests · {{ vacateRequests.length }}</span>
+  </div>
+  <div style="padding:8px 18px">
+    <div *ngFor="let req of vacateRequests" style="padding:12px 0;border-bottom:1px dashed var(--gray-100)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+        <div style="flex:1;min-width:240px">
+          <div style="font-weight:700;color:var(--gray-900)">
+            {{ req.tenant?.name }} · <span class="badge badge-purple">Room {{ req.room?.roomNumber }}</span>
+          </div>
+          <div style="font-size:0.8rem;color:var(--gray-500);margin-top:4px">
+            Wants to leave on <strong>{{ req.requestedLeaveDate | date:'dd MMM yyyy' }}</strong>
+            <span *ngIf="req.vacateRequestedAt"> · Requested {{ req.vacateRequestedAt | date:'dd MMM, h:mm a' }}</span>
+          </div>
+          <div *ngIf="req.vacateReason" style="margin-top:6px;padding:6px 10px;background:white;border-radius:var(--radius-sm);font-size:0.85rem;color:var(--gray-700);border:1px solid var(--gray-100)">
+            <em>"{{ req.vacateReason }}"</em>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap" *ngIf="rejectingId !== req.id">
+          <button class="btn btn-primary btn-sm" (click)="approveVacate(req)">✓ Approve</button>
+          <button class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#fecaca" (click)="startReject(req)">✕ Reject</button>
+        </div>
+      </div>
+      <!-- Inline reject form -->
+      <div *ngIf="rejectingId === req.id" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <input class="form-control" style="flex:1;min-width:200px" placeholder="Optional note for tenant…" [(ngModel)]="rejectNote">
+        <button class="btn btn-outline btn-sm" (click)="cancelReject()">Cancel</button>
+        <button class="btn btn-primary btn-sm" style="background:#dc2626" (click)="confirmReject(req)">Confirm Reject</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
   <input class="form-control" style="max-width:320px" placeholder="🔍 Search by name or room..." [(ngModel)]="search">
+  <span class="badge badge-blue">👥 Active: {{ assignments.length }}</span>
+  <span class="badge badge-gray">🆓 Unassigned: {{ unassignedCount() }}</span>
+  <span class="badge badge-purple">📋 Total registered: {{ tenantUsers.length }}</span>
 </div>
 
 <div *ngIf="loading" style="text-align:center;padding:60px"><div class="spinner spinner-dark"></div></div>
@@ -20,7 +61,7 @@
     <table>
       <thead>
         <tr>
-          <th>Tenant</th><th>Email</th><th>Phone</th><th>Room</th><th>PG</th><th>Rent/mo</th><th>Since</th>
+          <th>Tenant</th><th>Email</th><th>Phone</th><th>Room</th><th>PG</th><th>Rent/mo</th><th>Since</th><th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -31,6 +72,7 @@
                 {{ (a.tenant?.name || '?')[0].toUpperCase() }}
               </div>
               <span style="font-weight:600">{{ a.tenant?.name || '—' }}</span>
+              <span *ngIf="a.vacateRequestedAt" class="badge badge-amber" title="This tenant has a pending vacate request">⏳ Wants to leave</span>
             </div>
           </td>
           <td style="color:var(--gray-500)">{{ a.tenant?.email }}</td>
@@ -39,6 +81,12 @@
           <td>{{ a.room?.pg?.name || '—' }}</td>
           <td style="font-weight:700;color:var(--primary)">₹{{ (a.room?.rentAmount ?? 0) | number }}</td>
           <td style="color:var(--gray-500);font-size:0.8rem">{{ a.joinDate | date:'dd MMM yyyy' }}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#fecaca"
+                    (click)="manualVacate(a)" title="Move this tenant out (effective today)">
+              🚪 Vacate
+            </button>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -54,11 +102,14 @@
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <label class="form-label">Select Tenant *</label>
+        <label class="form-label">Select Tenant * <span style="color:var(--gray-400);font-weight:400">({{ tenantUsers.length }} registered)</span></label>
         <select class="form-control" [(ngModel)]="selectedTenantId">
           <option value="">Choose a tenant...</option>
-          <option *ngFor="let t of tenantUsers" [value]="t.id">{{ t.name }} ({{ t.email }})</option>
+          <option *ngFor="let t of tenantUsers" [value]="t.id">{{ tenantOptionLabel(t) }}</option>
         </select>
+        <div style="font-size:0.75rem;color:var(--gray-400);margin-top:4px">
+          Re-assigning a tenant who's already in a room will vacate their old room automatically.
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">Select Room (with free bed) *</label>

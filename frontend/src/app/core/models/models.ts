@@ -41,6 +41,9 @@ export interface RoomAssignment {
   joinDate: string;
   leaveDate: string;
   isActive: boolean;
+  vacateRequestedAt?: string;   // ISO datetime; null/undefined when no request
+  requestedLeaveDate?: string;  // ISO date when tenant wants to leave
+  vacateReason?: string;
 }
 
 export interface RentRecord {

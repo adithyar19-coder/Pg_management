@@ -42,6 +42,26 @@ public class TenantController {
         return ResponseEntity.ok(ApiResponse.success("No room assigned", null));
     }
 
+    // ── Vacate request ───────────────────────────────────
+    @PostMapping("/vacate")
+    public ResponseEntity<ApiResponse<RoomAssignment>> requestVacate(@AuthenticationPrincipal UserDetails ud,
+                                                                       @RequestBody Map<String, Object> body) {
+        Object dateObj = body.get("leaveDate");
+        if (dateObj == null || dateObj.toString().isBlank()) {
+            throw new IllegalArgumentException("leaveDate is required (YYYY-MM-DD)");
+        }
+        java.time.LocalDate leaveDate = java.time.LocalDate.parse(dateObj.toString());
+        String reason = body.get("reason") != null ? body.get("reason").toString() : null;
+        return ResponseEntity.ok(ApiResponse.success("Vacate request submitted",
+                tenantService.requestVacate(getUser(ud), leaveDate, reason)));
+    }
+
+    @DeleteMapping("/vacate")
+    public ResponseEntity<ApiResponse<Void>> cancelVacateRequest(@AuthenticationPrincipal UserDetails ud) {
+        tenantService.cancelVacateRequest(getUser(ud));
+        return ResponseEntity.ok(ApiResponse.success("Vacate request cancelled", null));
+    }
+
     // ── Complaints ───────────────────────────────────────
     @PostMapping("/complaints")
     public ResponseEntity<ApiResponse<Complaint>> raiseComplaint(@AuthenticationPrincipal UserDetails ud,

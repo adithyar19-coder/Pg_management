@@ -11,6 +11,23 @@
 </div>
 
 <div *ngIf="!loading && assignment" style="display:grid;gap:20px">
+  <!-- Pending vacate request banner -->
+  <div *ngIf="hasVacateRequest()" class="card" style="border-left:4px solid var(--warning);background:#fffbeb">
+    <div style="padding:16px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-weight:700;color:#92400e;margin-bottom:4px">⏳ Vacate request pending owner approval</div>
+        <div style="font-size:0.85rem;color:var(--gray-600)">
+          You requested to leave on <strong>{{ assignment.requestedLeaveDate | date:'dd MMM yyyy' }}</strong>
+          <span *ngIf="assignment.vacateReason"> — Reason: "{{ assignment.vacateReason }}"</span>
+        </div>
+      </div>
+      <button class="btn btn-outline btn-sm" (click)="cancelVacate()" [disabled]="cancelling">
+        <span *ngIf="cancelling" class="spinner"></span>
+        {{ cancelling ? 'Cancelling…' : '✕ Cancel Request' }}
+      </button>
+    </div>
+  </div>
+
   <!-- Room card -->
   <div class="card">
     <div style="background:linear-gradient(135deg,var(--primary),#8b5cf6);padding:32px;color:white;display:flex;align-items:center;gap:24px">
@@ -81,6 +98,55 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Vacate action card -->
+  <div class="card" *ngIf="!hasVacateRequest()">
+    <div style="padding:18px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-weight:700;color:var(--gray-900);margin-bottom:4px">Planning to move out?</div>
+        <div style="font-size:0.85rem;color:var(--gray-500)">Submit a vacate request and your owner will approve it.</div>
+      </div>
+      <button class="btn btn-outline" style="border-color:#fecaca;color:#dc2626" (click)="openVacateModal()">
+        🚪 Request to Vacate
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Vacate request modal -->
+<div class="modal-overlay" *ngIf="showVacateModal" (click)="showVacateModal=false">
+  <div class="modal" (click)="$event.stopPropagation()" style="max-width:520px">
+    <div class="modal-header">
+      <span class="modal-title">🚪 Request to Vacate Room</span>
+      <button class="modal-close" (click)="showVacateModal=false">✕</button>
+    </div>
+    <div class="modal-body">
+      <div *ngIf="vacateError" class="alert alert-error" style="margin-bottom:12px">⚠️ {{ vacateError }}</div>
+
+      <div style="background:#fffbeb;border:1px dashed var(--warning);padding:10px 12px;border-radius:var(--radius);font-size:0.8rem;color:#78350f;margin-bottom:14px">
+        💡 The owner will see your request and approve it. Until approval, your assignment stays active and rent continues to apply.
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Move-out date *</label>
+        <input class="form-control" type="date" [(ngModel)]="vacateLeaveDate">
+        <div style="font-size:0.75rem;color:var(--gray-400);margin-top:4px">Default: 30 days from today</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Reason (optional)</label>
+        <textarea class="form-control" rows="3" [(ngModel)]="vacateReason"
+                  placeholder="e.g. Moving to another city for work..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="showVacateModal=false">Cancel</button>
+      <button class="btn btn-primary" (click)="submitVacate()" [disabled]="vacateSaving || !vacateLeaveDate">
+        <span *ngIf="vacateSaving" class="spinner"></span>
+        {{ vacateSaving ? 'Submitting…' : '🚪 Submit Request' }}
+      </button>
     </div>
   </div>
 </div>

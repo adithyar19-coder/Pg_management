@@ -30,7 +30,13 @@
       "Bash(powershell.exe -Command \"[Environment]::GetFolderPath\\('Desktop'\\)\")",
       "Bash(powershell.exe -Command \"Get-Process java -ErrorAction SilentlyContinue | Stop-Process -Force; Remove-Item -Recurse -Force 'C:\\\\Users\\\\2485139\\\\pg\\\\backend\\\\data' -ErrorAction SilentlyContinue; Write-Host 'Cleaned.'\")",
       "Bash(curl -s -X POST http://localhost:8082/api/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"owner@demo.com\\\\\",\\\\\"password\\\\\":\\\\\"demo123\\\\\"}\")",
-      "Bash(powershell.exe -Command \"Stop-Process -Id 4696 -Force -ErrorAction SilentlyContinue; Start-Sleep 1; netstat -ano | findstr ':8082' | findstr LISTENING\")"
+      "Bash(powershell.exe -Command \"Stop-Process -Id 4696 -Force -ErrorAction SilentlyContinue; Start-Sleep 1; netstat -ano | findstr ':8082' | findstr LISTENING\")",
+      "Bash(cd /tmp)",
+      "Bash(cat)",
+      "Bash(chmod +x reg.sh)",
+      "Bash(./reg.sh)",
+      "Bash(powershell.exe -Command \"Stop-Process -Id 3636 -Force -ErrorAction SilentlyContinue; Start-Sleep 1; Write-Host 'Killed.'\")",
+      "Bash(powershell.exe -Command \"Stop-Process -Id 20916 -Force -ErrorAction SilentlyContinue; Start-Sleep 1\")"
     ]
   }
 }

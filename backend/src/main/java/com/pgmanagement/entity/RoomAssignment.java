@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "room_assignments")
@@ -32,4 +33,14 @@ public class RoomAssignment {
 
     @Builder.Default
     private Boolean isActive = true;
+
+    // ── Vacate request workflow ──────────────────────────────
+    // When the tenant requests to vacate, these are populated.
+    // The owner then approves (sets isActive=false, leaveDate=requestedLeaveDate)
+    // or rejects (clears these fields).
+    private LocalDateTime vacateRequestedAt;
+    private LocalDate requestedLeaveDate;
+
+    @Column(columnDefinition = "TEXT")
+    private String vacateReason;
 }
