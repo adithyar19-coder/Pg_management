@@ -3,6 +3,8 @@ package com.pgmanagement.controller;
 import com.pgmanagement.dto.ApiResponse;
 import com.pgmanagement.entity.*;
 import com.pgmanagement.repository.UserRepository;
+import com.pgmanagement.service.FoodMenuService;
+import com.pgmanagement.service.ForumService;
 import com.pgmanagement.service.TenantService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,8 @@ public class TenantController {
 
     private final TenantService tenantService;
     private final UserRepository userRepository;
+    private final FoodMenuService foodMenuService;
+    private final ForumService forumService;
 
     private User getUser(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
@@ -40,6 +44,46 @@ public class TenantController {
             return ResponseEntity.ok(ApiResponse.success("OK", result.get()));
         }
         return ResponseEntity.ok(ApiResponse.success("No room assigned", null));
+    }
+
+    // ── PG search + Room request workflow ─────────────────
+    @GetMapping("/pgs/search")
+    public ResponseEntity<ApiResponse<List<PG>>> searchPgs(@RequestParam(required = false) String city,
+                                                             @RequestParam(required = false) String locality) {
+        return ResponseEntity.ok(ApiResponse.success("OK", tenantService.searchPGs(city, locality)));
+    }
+
+    @GetMapping("/pgs/{pgId}")
+    public ResponseEntity<ApiResponse<PG>> getPgDetails(@PathVariable Long pgId) {
+        return ResponseEntity.ok(ApiResponse.success("OK", tenantService.getPgById(pgId)));
+    }
+
+    @PostMapping("/room-requests")
+    public ResponseEntity<ApiResponse<RoomRequest>> submitRoomRequest(@AuthenticationPrincipal UserDetails ud,
+                                                                        @RequestBody Map<String, Object> body) {
+        Object pgIdObj = body.get("pgId");
+        if (pgIdObj == null) throw new IllegalArgumentException("pgId is required");
+        Long pgId = Long.valueOf(pgIdObj.toString());
+        String preferredType = body.get("preferredType") != null ? body.get("preferredType").toString() : null;
+        Integer preferredFloor = body.get("preferredFloor") != null && !body.get("preferredFloor").toString().isBlank()
+                ? Integer.valueOf(body.get("preferredFloor").toString()) : null;
+        Boolean acPreference = body.get("acPreference") != null
+                ? Boolean.valueOf(body.get("acPreference").toString()) : null;
+        String notes = body.get("notes") != null ? body.get("notes").toString() : null;
+        return ResponseEntity.ok(ApiResponse.success("Room request submitted",
+                tenantService.submitRoomRequest(getUser(ud), pgId, preferredType, preferredFloor, acPreference, notes)));
+    }
+
+    @GetMapping("/room-requests")
+    public ResponseEntity<ApiResponse<List<RoomRequest>>> getMyRoomRequests(@AuthenticationPrincipal UserDetails ud) {
+        return ResponseEntity.ok(ApiResponse.success("OK", tenantService.getMyRoomRequests(getUser(ud))));
+    }
+
+    @DeleteMapping("/room-requests/{id}")
+    public ResponseEntity<ApiResponse<RoomRequest>> cancelRoomRequest(@PathVariable Long id,
+                                                                        @AuthenticationPrincipal UserDetails ud) {
+        return ResponseEntity.ok(ApiResponse.success("Room request cancelled",
+                tenantService.cancelRoomRequest(getUser(ud), id)));
     }
 
     // ── Vacate request ───────────────────────────────────
@@ -128,8 +172,63 @@ public class TenantController {
         return ResponseEntity.ok(ApiResponse.success("Marked as read", null));
     }
 
+    @PostMapping("/notifications/mark-all-read")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> markAllRead(@AuthenticationPrincipal UserDetails ud) {
+        int n = tenantService.markAllNotificationsRead(getUser(ud));
+        return ResponseEntity.ok(ApiResponse.success(n + " notification(s) marked as read", Map.of("count", n)));
+    }
+
     @GetMapping("/notifications/count")
     public ResponseEntity<ApiResponse<Long>> getUnreadCount(@AuthenticationPrincipal UserDetails ud) {
         return ResponseEntity.ok(ApiResponse.success("OK", tenantService.getUnreadNotificationCount(getUser(ud))));
+    }
+
+    // ── Food Menu (my PG) ────────────────────────────────
+    @GetMapping("/food-menu")
+    public ResponseEntity<ApiResponse<List<FoodMenu>>> getFoodMenu(@AuthenticationPrincipal UserDetails ud) {
+        return ResponseEntity.ok(ApiResponse.success("OK", foodMenuService.getMenuForTenant(getUser(ud))));
+    }
+
+    // ── Forum (community board for my PG) ────────────────
+    @GetMapping("/forum/posts")
+    public ResponseEntity<ApiResponse<List<ForumPost>>> listForumPosts(@AuthenticationPrincipal UserDetails ud) {
+        return ResponseEntity.ok(ApiResponse.success("OK", forumService.listForTenant(getUser(ud))));
+    }
+
+    @PostMapping("/forum/posts")
+    public ResponseEntity<ApiResponse<ForumPost>> createForumPost(@RequestBody Map<String, Object> body,
+                                                                    @AuthenticationPrincipal UserDetails ud) {
+        String title = body.get("title") != null ? body.get("title").toString() : "";
+        String txt = body.get("body") != null ? body.get("body").toString() : "";
+        return ResponseEntity.ok(ApiResponse.success("Posted",
+                forumService.createPost(getUser(ud), null, title, txt)));
+    }
+
+    @DeleteMapping("/forum/posts/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteForumPost(@PathVariable Long id,
+                                                               @AuthenticationPrincipal UserDetails ud) {
+        forumService.deletePost(id, getUser(ud));
+        return ResponseEntity.ok(ApiResponse.success("Deleted", null));
+    }
+
+    @GetMapping("/forum/posts/{id}/replies")
+    public ResponseEntity<ApiResponse<List<ForumReply>>> listReplies(@PathVariable Long id,
+                                                                       @AuthenticationPrincipal UserDetails ud) {
+        return ResponseEntity.ok(ApiResponse.success("OK", forumService.listReplies(id, getUser(ud))));
+    }
+
+    @PostMapping("/forum/posts/{id}/replies")
+    public ResponseEntity<ApiResponse<ForumReply>> addReply(@PathVariable Long id,
+                                                              @RequestBody Map<String, String> body,
+                                                              @AuthenticationPrincipal UserDetails ud) {
+        return ResponseEntity.ok(ApiResponse.success("Replied",
+                forumService.addReply(id, getUser(ud), body.get("body"))));
+    }
+
+    @DeleteMapping("/forum/replies/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteReply(@PathVariable Long id,
+                                                          @AuthenticationPrincipal UserDetails ud) {
+        forumService.deleteReply(id, getUser(ud));
+        return ResponseEntity.ok(ApiResponse.success("Deleted", null));
     }
 }

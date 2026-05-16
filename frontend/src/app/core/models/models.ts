@@ -20,6 +20,8 @@ export interface PG {
   amenities: string;
   phone: string;
   totalRooms: string;
+  city?: string;
+  locality?: string;
   owner?: User;
 }
 
@@ -31,7 +33,37 @@ export interface Room {
   isOccupied: boolean;      // true only when currentOccupancy >= capacity
   currentOccupancy?: number; // count of active RoomAssignments, populated by backend
   type: string;
+  floor?: number;
+  hasAc?: boolean;
   pg?: PG;
+}
+
+export interface RoomRequest {
+  id: number;
+  tenant?: User;
+  pg?: PG;
+  preferredType?: 'SINGLE' | 'DOUBLE' | 'TRIPLE' | 'DORMITORY';
+  preferredFloor?: number;
+  acPreference?: boolean;
+  notes?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  assignedRoom?: Room;
+  ownerNote?: string;
+  createdAt: string;
+  reviewedAt?: string;
+}
+
+export interface RoomSuggestion {
+  roomId: number;
+  roomNumber: string;
+  floor: number;
+  type: string;
+  hasAc: boolean;
+  capacity: number;
+  currentOccupants: number;
+  rentAmount: number;
+  score: number;
+  reasoning: string;
 }
 
 export interface RoomAssignment {
@@ -109,4 +141,51 @@ export interface User {
   email: string;
   role: string;
   phone: string;
+}
+
+export interface FoodMenuCell {
+  id?: number;
+  pg?: PG;
+  dayOfWeek: 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
+  mealType: 'BREAKFAST' | 'LUNCH' | 'SNACKS' | 'DINNER';
+  items: string;
+  notes?: string;
+}
+
+export interface ForumPost {
+  id: number;
+  pg?: PG;
+  author?: User;
+  title: string;
+  body: string;
+  isPinned: boolean;
+  createdAt: string;
+  replyCount?: number;
+}
+
+export interface ForumReply {
+  id: number;
+  author?: User;
+  body: string;
+  createdAt: string;
+}
+
+export interface DirectMessage {
+  id: number;
+  sender?: User;
+  recipient?: User;
+  body: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface ConversationSummary {
+  partnerId: number;
+  partnerName: string;
+  partnerEmail: string;
+  partnerRole: 'OWNER' | 'TENANT';
+  lastMessage: string;
+  lastMessageAt: string;
+  lastFromMe: boolean;
+  unreadCount: number;
 }

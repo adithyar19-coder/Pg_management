@@ -46,9 +46,30 @@
     </div>
   </div>
 
+  <!-- Pending room requests (only when any) -->
+  <div *ngIf="myRequests.length > 0" class="card"
+       style="margin-bottom:20px;border-left:4px solid var(--warning);background:#fffbeb">
+    <div class="card-header" style="justify-content:space-between;background:transparent">
+      <span class="card-title">📝 My Pending Room Request{{ myRequests.length > 1 ? 's' : '' }}</span>
+      <a routerLink="/tenant/my-requests" class="btn btn-outline btn-sm">View details →</a>
+    </div>
+    <div style="padding:12px 18px;display:flex;flex-direction:column;gap:8px">
+      <div *ngFor="let req of myRequests" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 0;border-bottom:1px dashed var(--gray-100)">
+        <div>
+          <strong style="font-size:0.95rem">{{ req.pg?.name }}</strong>
+          <div style="font-size:0.78rem;color:var(--gray-500)">
+            Submitted {{ req.createdAt | date:'dd MMM, h:mm a' }}
+          </div>
+        </div>
+        <span class="badge" [ngClass]="requestBadgeClass(req.status)">⏳ {{ req.status }}</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Quick actions -->
   <div style="display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap">
-    <a routerLink="/tenant/complaints" class="btn btn-primary">📋 Raise Complaint</a>
+    <a *ngIf="!stats.hasRoom" routerLink="/tenant/search-pgs" class="btn btn-primary">🔍 Find a PG</a>
+    <a routerLink="/tenant/complaints" class="btn btn-outline">📋 Raise Complaint</a>
     <a routerLink="/tenant/maintenance" class="btn btn-outline">🔧 Request Maintenance</a>
     <a routerLink="/tenant/rent" class="btn btn-outline">💰 View Rent</a>
     <a routerLink="/tenant/notifications" class="btn btn-outline">🔔 Notifications</a>

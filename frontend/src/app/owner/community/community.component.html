@@ -1,0 +1,107 @@
+<div class="page-header">
+  <div><h1>Community Board</h1><p>Discussions and announcements from your PG residents</p></div>
+  <div style="display:flex;gap:8px">
+    <select class="form-control form-select" style="max-width:240px" [(ngModel)]="filterPgId" (change)="load()">
+      <option [ngValue]="null">All PGs</option>
+      <option *ngFor="let pg of pgs" [ngValue]="pg.id">{{ pg.name }}</option>
+    </select>
+    <button class="btn btn-primary" (click)="openCompose()">✏️ New Post</button>
+  </div>
+</div>
+
+<div *ngIf="loading" style="text-align:center;padding:60px"><div class="spinner spinner-dark"></div></div>
+
+<div *ngIf="!loading && posts.length === 0" class="empty-state card" style="padding:60px">
+  <div class="empty-icon">💬</div>
+  <div class="empty-title">No posts yet</div>
+  <div class="empty-text">Start the conversation by creating the first post</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px" *ngIf="!loading && posts.length > 0">
+  <div class="card" *ngFor="let p of posts"
+       [style.border-left]="p.isPinned ? '4px solid var(--warning)' : '4px solid var(--gray-200)'">
+    <div style="padding:14px 18px;cursor:pointer" (click)="toggleThread(p)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:240px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span *ngIf="p.isPinned" class="badge badge-amber" style="font-size:0.7rem">📌 PINNED</span>
+            <strong style="font-size:1rem;color:var(--gray-900)">{{ p.title }}</strong>
+          </div>
+          <div style="font-size:0.78rem;color:var(--gray-500)">
+            {{ authorBadge(p) }} <strong>{{ p.author?.name }}</strong> · {{ p.pg?.name }} ·
+            {{ p.createdAt | date:'dd MMM, h:mm a' }}
+          </div>
+          <div *ngIf="p.body" style="margin-top:8px;font-size:0.88rem;color:var(--gray-700);line-height:1.5">
+            {{ expandedId === p.id ? p.body : (p.body.length > 200 ? p.body.substring(0, 200) + '...' : p.body) }}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+          <span class="badge badge-blue" style="font-size:0.72rem">💬 {{ p.replyCount || 0 }}</span>
+          <div style="display:flex;gap:4px" (click)="$event.stopPropagation()">
+            <button class="btn btn-outline btn-sm" (click)="togglePin(p)" [title]="p.isPinned ? 'Unpin' : 'Pin'">
+              {{ p.isPinned ? '📌' : '📍' }}
+            </button>
+            <button class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#fecaca" (click)="deletePost(p)" title="Delete">
+              🗑
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expanded replies -->
+    <div *ngIf="expandedId === p.id" style="padding:0 18px 14px 18px;border-top:1px solid var(--gray-100);background:var(--gray-50)">
+      <div *ngFor="let r of replies[p.id]" style="padding:10px 0;border-bottom:1px dashed var(--gray-200);display:flex;justify-content:space-between;gap:10px">
+        <div style="flex:1">
+          <div style="font-size:0.76rem;color:var(--gray-500);margin-bottom:3px">
+            {{ authorBadge(r) }} <strong>{{ r.author?.name }}</strong> · {{ r.createdAt | date:'dd MMM, h:mm a' }}
+          </div>
+          <div style="font-size:0.88rem;color:var(--gray-800);line-height:1.4">{{ r.body }}</div>
+        </div>
+        <button *ngIf="canDeleteReply(r)" class="btn btn-outline btn-sm"
+                style="color:#dc2626;border-color:#fecaca;flex-shrink:0" (click)="deleteReply(p, r)" title="Delete reply">🗑</button>
+      </div>
+
+      <!-- Reply form -->
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <input class="form-control" placeholder="Write a reply..." [(ngModel)]="newReply" (keyup.enter)="sendReply(p)">
+        <button class="btn btn-primary btn-sm" (click)="sendReply(p)" [disabled]="replying || !newReply.trim()">
+          📤 Reply
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Compose modal -->
+<div class="modal-overlay" *ngIf="showCompose" (click)="showCompose=false">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">✏️ Create Forum Post</span>
+      <button class="modal-close" (click)="showCompose=false">✕</button>
+    </div>
+    <div class="modal-body">
+      <div *ngIf="error" class="alert alert-error" style="margin-bottom:12px">⚠️ {{ error }}</div>
+      <div class="form-group">
+        <label class="form-label">PG *</label>
+        <select class="form-control form-select" [(ngModel)]="composePgId">
+          <option *ngFor="let pg of pgs" [ngValue]="pg.id">{{ pg.name }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Title *</label>
+        <input class="form-control" [(ngModel)]="composeTitle" placeholder="What's this about?">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Message</label>
+        <textarea class="form-control" rows="5" [(ngModel)]="composeBody" placeholder="Share details, ask questions, plan events..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="showCompose=false">Cancel</button>
+      <button class="btn btn-primary" (click)="submitPost()" [disabled]="posting">
+        {{ posting ? 'Posting...' : '📤 Post' }}
+      </button>
+    </div>
+  </div>
+</div>

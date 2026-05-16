@@ -54,6 +54,33 @@
     </div>
   </div>
 
+  <!-- Pending Room Requests panel (only if any) -->
+  <div *ngIf="roomRequests.length > 0" class="card"
+       style="margin-bottom:20px;border-left:4px solid var(--primary);background:#eef2ff">
+    <div class="card-header" style="justify-content:space-between;background:transparent">
+      <span class="card-title">📝 Pending Room Requests · {{ roomRequests.length }}</span>
+      <a routerLink="/owner/room-requests" class="btn btn-primary btn-sm">Review all →</a>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Tenant</th><th>PG</th><th>Preferences</th><th>Submitted</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let req of roomRequests">
+            <td><strong>{{ req.tenant?.name }}</strong><br><span style="font-size:0.75rem;color:var(--gray-500)">{{ req.tenant?.email }}</span></td>
+            <td>{{ req.pg?.name }}</td>
+            <td style="font-size:0.8rem;color:var(--gray-600)">
+              <span *ngIf="req.preferredType">{{ req.preferredType }}</span>
+              <span *ngIf="req.preferredFloor != null"> · Floor {{ req.preferredFloor }}</span>
+              <span *ngIf="req.acPreference != null"> · {{ req.acPreference ? 'AC' : 'non-AC' }}</span>
+              <span *ngIf="!req.preferredType && req.preferredFloor == null && req.acPreference == null" style="color:var(--gray-400)">No specific preferences</span>
+            </td>
+            <td style="font-size:0.8rem;color:var(--gray-500)">{{ req.createdAt | date:'dd MMM, h:mm a' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- Bottom Grid -->
   <div class="content-grid-2">
     <!-- Recent Complaints -->

@@ -1,0 +1,69 @@
+<div class="page-header">
+  <div><h1>Food Menu</h1><p>Set the weekly meal plan for your PG. Click any cell to edit.</p></div>
+  <select class="form-control form-select" style="max-width:260px" [(ngModel)]="selectedPgId" (change)="load()">
+    <option *ngFor="let pg of pgs" [ngValue]="pg.id">{{ pg.name }}</option>
+  </select>
+</div>
+
+<div *ngIf="loading" style="text-align:center;padding:60px"><div class="spinner spinner-dark"></div></div>
+
+<div *ngIf="!loading && pgs.length === 0" class="empty-state card" style="padding:60px">
+  <div class="empty-icon">🏢</div>
+  <div class="empty-title">Add a PG first</div>
+  <div class="empty-text">You need to create a PG before setting up its food menu</div>
+</div>
+
+<div class="card" *ngIf="!loading && selectedPgId" style="overflow-x:auto">
+  <div class="table-wrapper">
+    <table style="min-width:800px">
+      <thead>
+        <tr>
+          <th style="width:120px;background:var(--gray-50);position:sticky;left:0">Meal</th>
+          <th *ngFor="let d of days" style="min-width:140px;text-align:center">{{ d }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let m of meals">
+          <td style="font-weight:700;background:var(--gray-50);position:sticky;left:0">
+            <span style="font-size:1.1rem;margin-right:6px">{{ mealEmoji(m) }}</span>{{ m }}
+          </td>
+          <td *ngFor="let d of days" (click)="startEdit(d, m)"
+              style="cursor:pointer;padding:8px;vertical-align:top;min-height:60px;position:relative"
+              onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background=''">
+            <div *ngIf="cellItems(d, m)" style="font-size:0.82rem;color:var(--gray-700);line-height:1.4">
+              {{ cellItems(d, m) }}
+            </div>
+            <div *ngIf="!cellItems(d, m)" style="font-size:0.72rem;color:var(--gray-400);font-style:italic">
+              + Click to add
+            </div>
+            <span *ngIf="saved[d + '_' + m]" style="position:absolute;top:4px;right:4px;font-size:0.7rem;color:var(--secondary)">✓ Saved</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Edit cell modal -->
+<div class="modal-overlay" *ngIf="editing" (click)="cancelEdit()">
+  <div class="modal" (click)="$event.stopPropagation()" style="max-width:480px">
+    <div class="modal-header">
+      <span class="modal-title">{{ mealEmoji(editing.meal) }} Edit {{ editing.meal }} — {{ editing.day }}</span>
+      <button class="modal-close" (click)="cancelEdit()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Dishes (comma-separated)</label>
+        <textarea class="form-control" rows="3" [(ngModel)]="editing.items" placeholder="e.g. Idli, Sambar, Coconut Chutney"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes (optional)</label>
+        <input class="form-control" [(ngModel)]="editing.notes" placeholder="e.g. Jain option available">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="cancelEdit()">Cancel</button>
+      <button class="btn btn-primary" (click)="saveCell()">💾 Save</button>
+    </div>
+  </div>
+</div>

@@ -78,6 +78,7 @@
       <button class="modal-close" (click)="showModal=false">✕</button>
     </div>
     <div class="modal-body">
+      <div *ngIf="error" class="alert alert-error" style="margin-bottom:12px">⚠️ {{ error }}</div>
       <div class="form-group">
         <label class="form-label">Select PG *</label>
         <select class="form-control form-select" [(ngModel)]="form.pgId">

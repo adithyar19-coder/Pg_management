@@ -24,10 +24,90 @@ public class TenantService {
     private final AnnouncementRepository announcementRepository;
     private final NotificationRepository notificationRepository;
     private final PGRepository pgRepository;
+    private final RoomRequestRepository roomRequestRepository;
 
     // ── Room ─────────────────────────────────────────────
     public Optional<RoomAssignment> getMyRoom(User tenant) {
         return roomAssignmentRepository.findByTenantAndIsActive(tenant, true);
+    }
+
+    // ── PG Search (location-based) ───────────────────────
+    public List<PG> searchPGs(String city, String locality) {
+        String c = (city != null && !city.isBlank()) ? city.trim() : null;
+        String l = (locality != null && !locality.isBlank()) ? locality.trim() : null;
+        if (c == null && l == null) return pgRepository.findAll();
+        return pgRepository.searchByLocation(c, l);
+    }
+
+    public PG getPgById(Long pgId) {
+        return pgRepository.findById(pgId)
+                .orElseThrow(() -> new RuntimeException("PG not found"));
+    }
+
+    // ── Room Request Workflow (tenant submits, owner reviews) ──
+    @Transactional
+    public RoomRequest submitRoomRequest(User tenant, Long pgId,
+                                         String preferredType, Integer preferredFloor,
+                                         Boolean acPreference, String notes) {
+        PG pg = pgRepository.findById(pgId)
+                .orElseThrow(() -> new IllegalArgumentException("PG not found"));
+
+        // Block duplicates: one PENDING request per tenant+PG
+        if (roomRequestRepository.existsByTenantAndPgAndStatus(tenant, pg, RoomRequest.Status.PENDING)) {
+            throw new IllegalArgumentException("You already have a pending request for this PG");
+        }
+        // Block if tenant already has an active assignment anywhere
+        if (roomAssignmentRepository.findByTenantAndIsActive(tenant, true).isPresent()) {
+            throw new IllegalArgumentException("You already have an active room assignment. Vacate it first before requesting another.");
+        }
+
+        Room.RoomType typeEnum = null;
+        if (preferredType != null && !preferredType.isBlank()) {
+            try { typeEnum = Room.RoomType.valueOf(preferredType); }
+            catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException("Invalid preferredType: " + preferredType);
+            }
+        }
+
+        RoomRequest req = RoomRequest.builder()
+                .tenant(tenant)
+                .pg(pg)
+                .preferredType(typeEnum)
+                .preferredFloor(preferredFloor)
+                .acPreference(acPreference)
+                .notes(notes)
+                .status(RoomRequest.Status.PENDING)
+                .createdAt(LocalDateTime.now())
+                .build();
+        req = roomRequestRepository.save(req);
+
+        // Notify the PG owner
+        Notification notif = Notification.builder()
+                .user(pg.getOwner())
+                .message(tenant.getName() + " submitted a new room request for " + pg.getName())
+                .type("ROOM_REQUEST")
+                .build();
+        notificationRepository.save(notif);
+        return req;
+    }
+
+    public List<RoomRequest> getMyRoomRequests(User tenant) {
+        return roomRequestRepository.findByTenantOrderByCreatedAtDesc(tenant);
+    }
+
+    @Transactional
+    public RoomRequest cancelRoomRequest(User tenant, Long requestId) {
+        RoomRequest req = roomRequestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Request not found"));
+        if (!req.getTenant().getId().equals(tenant.getId())) {
+            throw new RuntimeException("Not authorized");
+        }
+        if (req.getStatus() != RoomRequest.Status.PENDING) {
+            throw new IllegalArgumentException("Only PENDING requests can be cancelled (current: " + req.getStatus() + ")");
+        }
+        req.setStatus(RoomRequest.Status.CANCELLED);
+        req.setReviewedAt(LocalDateTime.now());
+        return roomRequestRepository.save(req);
     }
 
     // ── Vacate request workflow ──────────────────────────
@@ -134,10 +214,19 @@ public class TenantService {
     @Transactional
     public void markNotificationRead(Long id, User tenant) {
         Notification notif = notificationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Not found"));
+                .orElseThrow(() -> new RuntimeException("Notification not found"));
         if (!notif.getUser().getId().equals(tenant.getId())) throw new RuntimeException("Not authorized");
         notif.setIsRead(true);
         notificationRepository.save(notif);
+    }
+
+    /** Mark every unread notification for this user as read. Used when the bell page opens. */
+    @Transactional
+    public int markAllNotificationsRead(User user) {
+        List<Notification> unread = notificationRepository.findByUserAndIsRead(user, false);
+        for (Notification n : unread) n.setIsRead(true);
+        notificationRepository.saveAll(unread);
+        return unread.size();
     }
 
     public long getUnreadNotificationCount(User tenant) {

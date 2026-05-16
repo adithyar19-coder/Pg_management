@@ -16,6 +16,7 @@ export class MaintenanceComponent implements OnInit {
   selected: MaintenanceRequest | null = null;
   showModal = false;
   saving = false;
+  error = '';
   newStatus = '';
   assignedTo = '';
   filterStatus = '';
@@ -32,14 +33,15 @@ export class MaintenanceComponent implements OnInit {
 
   get filtered() { return this.filterStatus ? this.requests.filter(r => r.status === this.filterStatus) : this.requests; }
 
-  open(r: MaintenanceRequest) { this.selected = r; this.newStatus = r.status; this.assignedTo = r.assignedTo || ''; this.showModal = true; }
+  open(r: MaintenanceRequest) { this.selected = r; this.newStatus = r.status; this.assignedTo = r.assignedTo || ''; this.error = ''; this.showModal = true; }
 
   update() {
     if (!this.selected) return;
     this.saving = true;
+    this.error = '';
     this.api.updateMaintenance(this.selected.id, { status: this.newStatus, assignedTo: this.assignedTo }).subscribe({
       next: () => { this.saving = false; this.showModal = false; this.load(); },
-      error: () => this.saving = false
+      error: err => { this.saving = false; this.error = err.error?.message || 'Failed to update'; }
     });
   }
 

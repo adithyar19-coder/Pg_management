@@ -1,0 +1,72 @@
+<div class="page-header">
+  <div><h1>My Room Requests</h1><p>Track the status of your room request submissions</p></div>
+</div>
+
+<div *ngIf="error" class="alert alert-error" style="margin-bottom:16px">⚠️ {{ error }}</div>
+
+<div *ngIf="loading" style="text-align:center;padding:60px"><div class="spinner spinner-dark"></div></div>
+
+<div *ngIf="!loading && requests.length === 0" class="empty-state card" style="padding:60px">
+  <div class="empty-icon">📝</div>
+  <div class="empty-title">No requests yet</div>
+  <div class="empty-text">Search PGs and submit a room request to get started</div>
+  <a routerLink="/tenant/search-pgs" class="btn btn-primary" style="margin-top:16px;display:inline-block">🔍 Find a PG</a>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:14px" *ngIf="!loading && requests.length > 0">
+  <div class="card" *ngFor="let req of requests">
+    <div style="padding:16px 22px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;border-bottom:1px solid var(--gray-100)">
+      <div>
+        <div style="font-weight:700;font-size:1.05rem;color:var(--gray-900);margin-bottom:3px">
+          {{ req.pg?.name }}
+        </div>
+        <div style="font-size:0.8rem;color:var(--gray-500)">
+          Submitted {{ req.createdAt | date:'dd MMM yyyy, h:mm a' }}
+        </div>
+      </div>
+      <span class="badge" [ngClass]="statusClass(req.status)" style="font-size:0.85rem;padding:6px 12px">
+        {{ statusIcon(req.status) }} {{ req.status }}
+      </span>
+    </div>
+
+    <div class="card-body" style="padding:16px 22px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px">
+        <div *ngIf="req.preferredType">
+          <div style="font-size:0.72rem;color:var(--gray-500);text-transform:uppercase">Type</div>
+          <div style="font-weight:600;font-size:0.9rem">{{ req.preferredType }}</div>
+        </div>
+        <div *ngIf="req.preferredFloor != null">
+          <div style="font-size:0.72rem;color:var(--gray-500);text-transform:uppercase">Floor</div>
+          <div style="font-weight:600;font-size:0.9rem">{{ req.preferredFloor }}</div>
+        </div>
+        <div *ngIf="req.acPreference != null">
+          <div style="font-size:0.72rem;color:var(--gray-500);text-transform:uppercase">AC</div>
+          <div style="font-weight:600;font-size:0.9rem">{{ req.acPreference ? 'Yes' : 'No' }}</div>
+        </div>
+      </div>
+
+      <div *ngIf="req.notes" style="padding:8px 12px;background:var(--gray-50);border-radius:var(--radius-sm);font-size:0.85rem;color:var(--gray-700);margin-bottom:10px">
+        <em>"{{ req.notes }}"</em>
+      </div>
+
+      <!-- Approval result -->
+      <div *ngIf="req.status === 'APPROVED' && req.assignedRoom" class="alert alert-success" style="margin-bottom:10px">
+        ✅ Approved! You've been assigned <strong>Room {{ req.assignedRoom.roomNumber }}</strong> (₹{{ req.assignedRoom.rentAmount }}/month).
+        <span *ngIf="req.reviewedAt">Approved on {{ req.reviewedAt | date:'dd MMM yyyy' }}.</span>
+      </div>
+      <div *ngIf="req.status === 'REJECTED'" class="alert alert-error" style="margin-bottom:10px">
+        ✕ Rejected.<span *ngIf="req.ownerNote"> Owner note: <em>"{{ req.ownerNote }}"</em></span>
+      </div>
+      <div *ngIf="req.status === 'CANCELLED'" class="alert alert-warning" style="margin-bottom:10px">
+        ⊘ You cancelled this request on {{ req.reviewedAt | date:'dd MMM yyyy' }}.
+      </div>
+
+      <!-- Actions -->
+      <div *ngIf="req.status === 'PENDING'" style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#fecaca" (click)="cancel(req)">
+          ✕ Cancel Request
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

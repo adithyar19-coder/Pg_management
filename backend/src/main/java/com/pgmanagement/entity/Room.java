@@ -38,6 +38,15 @@ public class Room {
     @Builder.Default
     private RoomType type = RoomType.SINGLE;
 
+    // ── Matching attributes (used by Genetic Algorithm room-suggestion) ──
+    /** Floor number, e.g. 1, 2, 3. Used in tenant preference matching. */
+    @Builder.Default
+    private Integer floor = 1;
+
+    /** Whether the room has air conditioning. Used in tenant preference matching. */
+    @Builder.Default
+    private Boolean hasAc = false;
+
     /** Count of active RoomAssignments for this room. Populated by the service layer — not persisted. */
     @Transient
     private Integer currentOccupancy;

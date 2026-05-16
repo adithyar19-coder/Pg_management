@@ -1,6 +1,6 @@
 <div class="page-header">
   <div><h1>Tenants</h1><p>View and manage all active tenants</p></div>
-  <button class="btn btn-primary" (click)="openAssignModal()">+ Assign Tenant</button>
+  <a routerLink="/owner/room-requests" class="btn btn-primary">📝 Review Room Requests</a>
 </div>
 
 <!-- ─────────────────────────────────────────────────────────────── -->
@@ -44,7 +44,6 @@
 <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
   <input class="form-control" style="max-width:320px" placeholder="🔍 Search by name or room..." [(ngModel)]="search">
   <span class="badge badge-blue">👥 Active: {{ assignments.length }}</span>
-  <span class="badge badge-gray">🆓 Unassigned: {{ unassignedCount() }}</span>
   <span class="badge badge-purple">📋 Total registered: {{ tenantUsers.length }}</span>
 </div>
 
@@ -53,7 +52,8 @@
 <div *ngIf="!loading && filtered.length===0" class="empty-state card" style="padding:60px">
   <div class="empty-icon">👥</div>
   <div class="empty-title">No active tenants</div>
-  <div class="empty-text">Assign tenants to rooms to see them here</div>
+  <div class="empty-text">When tenants submit room requests and you approve them, they'll appear here</div>
+  <a routerLink="/owner/room-requests" class="btn btn-primary" style="margin-top:16px;display:inline-block">📝 Review Room Requests</a>
 </div>
 
 <div class="card" *ngIf="!loading && filtered.length>0">
@@ -90,43 +90,5 @@
         </tr>
       </tbody>
     </table>
-  </div>
-</div>
-
-<!-- Assign Modal -->
-<div class="modal-overlay" *ngIf="showModal" (click)="showModal=false">
-  <div class="modal" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <span class="modal-title">👤 Assign Tenant to Room</span>
-      <button class="modal-close" (click)="showModal=false">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Select Tenant * <span style="color:var(--gray-400);font-weight:400">({{ tenantUsers.length }} registered)</span></label>
-        <select class="form-control" [(ngModel)]="selectedTenantId">
-          <option value="">Choose a tenant...</option>
-          <option *ngFor="let t of tenantUsers" [value]="t.id">{{ tenantOptionLabel(t) }}</option>
-        </select>
-        <div style="font-size:0.75rem;color:var(--gray-400);margin-top:4px">
-          Re-assigning a tenant who's already in a room will vacate their old room automatically.
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Select Room (with free bed) *</label>
-        <select class="form-control" [(ngModel)]="selectedRoomId">
-          <option value="">Choose a room...</option>
-          <option *ngFor="let r of rooms" [value]="r.id">{{ roomLabel(r) }}</option>
-        </select>
-      </div>
-      <div *ngIf="rooms.length===0" class="alert alert-warning">⚠️ No rooms with free beds. All rooms are fully occupied.</div>
-      <div *ngIf="error" class="alert alert-error" style="margin-top:10px">⚠️ {{ error }}</div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" (click)="showModal=false">Cancel</button>
-      <button class="btn btn-primary" (click)="assign()" [disabled]="saving || !selectedRoomId || !selectedTenantId">
-        <span *ngIf="saving" class="spinner"></span>
-        {{ saving ? 'Assigning...' : 'Assign Tenant' }}
-      </button>
-    </div>
   </div>
 </div>

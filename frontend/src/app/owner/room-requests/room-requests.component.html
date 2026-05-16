@@ -1,0 +1,155 @@
+<div class="page-header">
+  <div><h1>Room Requests</h1><p>Review tenant requests and assign rooms with smart matching</p></div>
+  <div style="display:flex;gap:8px">
+    <button class="btn" [ngClass]="filterStatus === 'PENDING' ? 'btn-primary' : 'btn-outline'" (click)="changeFilter('PENDING')">⏳ Pending</button>
+    <button class="btn" [ngClass]="filterStatus === 'ALL' ? 'btn-primary' : 'btn-outline'" (click)="changeFilter('ALL')">📋 All</button>
+  </div>
+</div>
+
+<div *ngIf="error" class="alert alert-error" style="margin-bottom:16px">⚠️ {{ error }}</div>
+
+<div *ngIf="loading" style="text-align:center;padding:60px"><div class="spinner spinner-dark"></div></div>
+
+<div *ngIf="!loading && requests.length === 0" class="empty-state card" style="padding:60px">
+  <div class="empty-icon">📝</div>
+  <div class="empty-title">No {{ filterStatus === 'PENDING' ? 'pending ' : '' }}requests</div>
+  <div class="empty-text">When tenants submit room requests for your PGs, they'll appear here</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:14px" *ngIf="!loading && requests.length > 0">
+  <div class="card" *ngFor="let req of requests"
+       [style.border-left]="req.status === 'PENDING' ? '4px solid var(--warning)' : '4px solid var(--gray-200)'">
+    <div style="padding:16px 22px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;border-bottom:1px solid var(--gray-100)">
+      <div>
+        <div style="font-weight:700;font-size:1rem;color:var(--gray-900);margin-bottom:3px">
+          {{ req.tenant?.name }} <span style="font-weight:400;color:var(--gray-500);font-size:0.85rem">({{ req.tenant?.email }})</span>
+        </div>
+        <div style="font-size:0.82rem;color:var(--gray-500)">
+          Wants a room at <strong>{{ req.pg?.name }}</strong> · Submitted {{ req.createdAt | date:'dd MMM, h:mm a' }}
+        </div>
+      </div>
+      <span class="badge" [ngClass]="statusClass(req.status)" style="font-size:0.8rem;padding:5px 10px">
+        {{ req.status }}
+      </span>
+    </div>
+
+    <div class="card-body" style="padding:16px 22px">
+      <!-- Preferences -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
+        <div>
+          <div style="font-size:0.7rem;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.04em">Pref. Type</div>
+          <div style="font-weight:600;font-size:0.9rem">{{ req.preferredType || '— any —' }}</div>
+        </div>
+        <div>
+          <div style="font-size:0.7rem;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.04em">Pref. Floor</div>
+          <div style="font-weight:600;font-size:0.9rem">{{ req.preferredFloor != null ? req.preferredFloor : '— any —' }}</div>
+        </div>
+        <div>
+          <div style="font-size:0.7rem;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.04em">AC</div>
+          <div style="font-weight:600;font-size:0.9rem">
+            {{ req.acPreference == null ? '— any —' : (req.acPreference ? 'Required' : 'Not needed') }}
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="req.notes" style="padding:8px 12px;background:var(--gray-50);border-radius:var(--radius-sm);font-size:0.85rem;color:var(--gray-700);margin-bottom:12px">
+        💬 <em>"{{ req.notes }}"</em>
+      </div>
+
+      <!-- Approved / Rejected -->
+      <div *ngIf="req.status === 'APPROVED' && req.assignedRoom" class="alert alert-success" style="margin-bottom:10px">
+        ✅ Assigned to <strong>Room {{ req.assignedRoom.roomNumber }}</strong> on {{ req.reviewedAt | date:'dd MMM yyyy' }}
+      </div>
+      <div *ngIf="req.status === 'REJECTED'" class="alert alert-error" style="margin-bottom:10px">
+        ✕ Rejected on {{ req.reviewedAt | date:'dd MMM yyyy' }}<span *ngIf="req.ownerNote">. Note: <em>"{{ req.ownerNote }}"</em></span>
+      </div>
+
+      <!-- GA Suggestion result -->
+      <div *ngIf="suggestions[req.id]" class="card" style="background:linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%);border:1px solid #86efac;padding:14px 18px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+          <div style="font-weight:700;color:#166534">🤖 GA Suggestion: Room {{ suggestions[req.id].roomNumber }}</div>
+          <span class="badge badge-green" style="font-size:0.9rem;padding:4px 12px">
+            Score: {{ suggestions[req.id].score }}/100
+          </span>
+        </div>
+        <div style="font-size:0.85rem;color:var(--gray-700);margin-bottom:6px">
+          Floor {{ suggestions[req.id].floor }} · {{ suggestions[req.id].type }} ·
+          {{ suggestions[req.id].hasAc ? 'AC' : 'non-AC' }} ·
+          {{ suggestions[req.id].currentOccupants }}/{{ suggestions[req.id].capacity }} occupied ·
+          ₹{{ suggestions[req.id].rentAmount }}/mo
+        </div>
+        <div style="font-size:0.8rem;color:var(--gray-600);font-style:italic;margin-bottom:10px">
+          {{ suggestions[req.id].reasoning }}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" (click)="approveWithSuggestion(req)" [disabled]="approving[req.id]">
+            <span *ngIf="approving[req.id]" class="spinner"></span>
+            ✓ Approve with this Room
+          </button>
+          <button class="btn btn-outline btn-sm" (click)="openOverride(req)">
+            🎯 Pick Different Room
+          </button>
+        </div>
+      </div>
+
+      <!-- Action buttons (when PENDING and no inline reject) -->
+      <div *ngIf="req.status === 'PENDING' && rejectingId !== req.id && !suggestions[req.id]" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" (click)="suggest(req)" [disabled]="suggesting[req.id]">
+          <span *ngIf="suggesting[req.id]" class="spinner"></span>
+          🤖 {{ suggesting[req.id] ? 'Analyzing...' : 'Suggest Best Room (GA)' }}
+        </button>
+        <button class="btn btn-outline btn-sm" (click)="openOverride(req)">
+          🎯 Manually Pick Room
+        </button>
+        <button class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#fecaca" (click)="startReject(req)">
+          ✕ Reject
+        </button>
+      </div>
+
+      <!-- Inline reject form -->
+      <div *ngIf="rejectingId === req.id" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <input class="form-control" style="flex:1;min-width:200px" placeholder="Optional reason for rejection..." [(ngModel)]="rejectNote">
+        <button class="btn btn-outline btn-sm" (click)="cancelReject()">Cancel</button>
+        <button class="btn btn-primary btn-sm" style="background:#dc2626" (click)="confirmReject(req)">Confirm Reject</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Override Modal — pick a different vacant room manually -->
+<div class="modal-overlay" *ngIf="showOverrideModal" (click)="showOverrideModal=false">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">🎯 Override — Pick a Room Manually</span>
+      <button class="modal-close" (click)="showOverrideModal=false">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--primary-light);color:var(--primary-dark);padding:10px 14px;border-radius:var(--radius);font-size:0.82rem;margin-bottom:14px">
+        Assigning to <strong>{{ overrideRequest?.tenant?.name }}</strong> at <strong>{{ overrideRequest?.pg?.name }}</strong>
+      </div>
+
+      <div *ngIf="overrideLoading" style="text-align:center;padding:20px">
+        <div class="spinner spinner-dark"></div>
+      </div>
+
+      <div *ngIf="!overrideLoading && overrideRooms.length === 0" class="alert alert-warning">
+        No vacant rooms available in this PG.
+      </div>
+
+      <div *ngIf="!overrideLoading && overrideRooms.length > 0" class="form-group">
+        <label class="form-label">Select Room</label>
+        <select class="form-control form-select" [(ngModel)]="overrideRoomId">
+          <option value="">— Choose a vacant room —</option>
+          <option *ngFor="let rm of overrideRooms" [value]="rm.id">{{ roomLabel(rm) }}</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="showOverrideModal=false">Cancel</button>
+      <button class="btn btn-primary" (click)="confirmOverride()"
+              [disabled]="!overrideRoomId || (overrideRequest && approving[overrideRequest.id])">
+        ✓ Approve with Selected Room
+      </button>
+    </div>
+  </div>
+</div>

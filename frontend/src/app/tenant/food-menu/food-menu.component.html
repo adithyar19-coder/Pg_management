@@ -1,0 +1,68 @@
+<div class="page-header">
+  <div><h1>Food Menu</h1><p>This week's meal plan at your PG</p></div>
+</div>
+
+<div *ngIf="loading" style="text-align:center;padding:60px"><div class="spinner spinner-dark"></div></div>
+
+<div *ngIf="error" class="alert alert-warning" style="margin-bottom:16px">⚠️ {{ error }}</div>
+
+<div *ngIf="!loading && !error && !hasMenu()" class="empty-state card" style="padding:60px">
+  <div class="empty-icon">🍽️</div>
+  <div class="empty-title">No menu published yet</div>
+  <div class="empty-text">Your PG owner hasn't set up the food menu. Check back later!</div>
+</div>
+
+<!-- Today's menu — highlighted card -->
+<div *ngIf="!loading && !error && hasMenu()" class="card" style="margin-bottom:20px;border-left:4px solid var(--primary);background:linear-gradient(135deg, #f0f9ff 0%, #ecfeff 100%)">
+  <div style="padding:14px 18px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;gap:8px">
+    <span style="font-size:1.25rem">🌟</span>
+    <strong style="color:var(--primary-dark)">Today · {{ todayCode() }}</strong>
+  </div>
+  <div style="padding:14px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+    <div *ngFor="let m of meals" style="background:white;border-radius:var(--radius);padding:12px 14px">
+      <div style="font-size:0.72rem;color:var(--gray-500);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">
+        {{ mealEmoji(m) }} {{ m }}
+      </div>
+      <div style="font-size:0.88rem;color:var(--gray-800);line-height:1.4">
+        {{ itemsFor(todayCode(), m) || '—' }}
+      </div>
+      <div *ngIf="notesFor(todayCode(), m)" style="font-size:0.72rem;color:var(--gray-500);margin-top:6px;font-style:italic">
+        {{ notesFor(todayCode(), m) }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Full week grid -->
+<div *ngIf="!loading && !error && hasMenu()" class="card" style="overflow-x:auto">
+  <div style="padding:14px 18px;border-bottom:1px solid var(--gray-100)">
+    <strong>📆 Full Week Schedule</strong>
+  </div>
+  <div class="table-wrapper">
+    <table style="min-width:800px">
+      <thead>
+        <tr>
+          <th style="width:120px;background:var(--gray-50);position:sticky;left:0">Meal</th>
+          <th *ngFor="let d of days"
+              [style.background]="d === todayCode() ? 'var(--primary-light)' : ''"
+              [style.color]="d === todayCode() ? 'var(--primary-dark)' : ''"
+              style="text-align:center;min-width:140px">
+            {{ d }} {{ d === todayCode() ? '★' : '' }}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let m of meals">
+          <td style="font-weight:700;background:var(--gray-50);position:sticky;left:0">
+            <span style="font-size:1.1rem;margin-right:6px">{{ mealEmoji(m) }}</span>{{ m }}
+          </td>
+          <td *ngFor="let d of days" [style.background]="d === todayCode() ? '#fffef0' : ''"
+              style="vertical-align:top;font-size:0.82rem;color:var(--gray-700);padding:10px">
+            <div>{{ itemsFor(d, m) || '—' }}</div>
+            <div *ngIf="notesFor(d, m)" style="font-size:0.7rem;color:var(--gray-400);font-style:italic;margin-top:4px">{{ notesFor(d, m) }}</div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

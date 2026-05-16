@@ -50,6 +50,7 @@
       <button class="modal-close" (click)="showModal=false">✕</button>
     </div>
     <div class="modal-body">
+      <div *ngIf="error" class="alert alert-error" style="margin-bottom:12px">⚠️ {{ error }}</div>
       <div style="padding:12px;background:var(--gray-50);border-radius:var(--radius-sm);margin-bottom:16px">
         <p style="margin:0;font-size:0.875rem;color:var(--gray-700)">{{ selected.issue }}</p>
       </div>

@@ -13,6 +13,7 @@ export class DashboardComponent implements OnInit {
   stats: any = {};
   complaints: any[] = [];
   rentRecords: any[] = [];
+  roomRequests: any[] = [];
   loading = true;
 
   constructor(private api: ApiService) {}
@@ -21,6 +22,7 @@ export class DashboardComponent implements OnInit {
     this.api.ownerDashboard().subscribe({ next: r => { this.stats = r.data; this.loading = false; }, error: () => this.loading = false });
     this.api.getOwnerComplaints().subscribe({ next: r => { this.complaints = (r.data || []).slice(0, 5); } });
     this.api.getOwnerRent().subscribe({ next: r => { this.rentRecords = (r.data || []).filter((x: any) => x.status === 'PENDING').slice(0, 5); } });
+    this.api.getRoomRequests('PENDING').subscribe({ next: r => { this.roomRequests = (r.data || []).slice(0, 5); } });
   }
 
   badgeClass(status: string) {

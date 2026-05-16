@@ -55,6 +55,7 @@
       <button class="modal-close" (click)="showModal=false">✕</button>
     </div>
     <div class="modal-body">
+      <div *ngIf="error" class="alert alert-error" style="margin-bottom:12px">⚠️ {{ error }}</div>
       <div class="form-group">
         <label class="form-label">PG Name *</label>
         <input class="form-control" [(ngModel)]="form.name" placeholder="e.g. Sunrise Boys PG">
@@ -62,6 +63,16 @@
       <div class="form-group">
         <label class="form-label">Address *</label>
         <textarea class="form-control" [(ngModel)]="form.address" placeholder="Full address" rows="2"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">City</label>
+          <input class="form-control" [(ngModel)]="form.city" placeholder="e.g. Bengaluru">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Locality</label>
+          <input class="form-control" [(ngModel)]="form.locality" placeholder="e.g. Koramangala, HSR Layout">
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">

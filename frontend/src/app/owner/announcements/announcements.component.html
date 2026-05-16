@@ -1,6 +1,6 @@
 <div class="page-header">
   <div><h1>Announcements</h1><p>Broadcast updates to your tenants</p></div>
-  <button class="btn btn-primary" (click)="showModal=true;form={title:'',message:'',pgId:'',priority:'NORMAL'}">+ New Announcement</button>
+  <button class="btn btn-primary" (click)="openAdd()">+ New Announcement</button>
 </div>
 
 <div *ngIf="loading" style="text-align:center;padding:60px"><div class="spinner spinner-dark"></div></div>
@@ -9,7 +9,7 @@
   <div class="empty-icon">📢</div>
   <div class="empty-title">No announcements yet</div>
   <div class="empty-text">Post your first announcement to keep tenants informed</div>
-  <button class="btn btn-primary" style="margin-top:16px" (click)="showModal=true">+ Create Announcement</button>
+  <button class="btn btn-primary" style="margin-top:16px" (click)="openAdd()">+ Create Announcement</button>
 </div>
 
 <div style="display:flex;flex-direction:column;gap:14px" *ngIf="!loading && announcements.length>0">
@@ -38,6 +38,7 @@
       <button class="modal-close" (click)="showModal=false">✕</button>
     </div>
     <div class="modal-body">
+      <div *ngIf="error" class="alert alert-error" style="margin-bottom:12px">⚠️ {{ error }}</div>
       <div class="form-group">
         <label class="form-label">Title *</label>
         <input class="form-control" [(ngModel)]="form.title" placeholder="e.g. Water supply disruption">

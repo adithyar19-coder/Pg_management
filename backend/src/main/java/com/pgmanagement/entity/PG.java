@@ -35,4 +35,10 @@ public class PG {
 
     private String phone;
     private String totalRooms;
+
+    // ── Location fields (for tenant search) ───────────────────────────
+    /** City e.g. "Bengaluru", "Mumbai". Used for primary location filter. */
+    private String city;
+    /** Sub-area / locality e.g. "Koramangala", "HSR Layout". Used for fine-grained filter. */
+    private String locality;
 }

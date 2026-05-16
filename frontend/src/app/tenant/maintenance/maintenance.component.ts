@@ -53,7 +53,7 @@ export class TenantMaintenanceComponent implements OnInit {
     this.saving = true; this.error = '';
     this.api.raiseMaintenance({ title: this.form.title, issue: this.form.issue, priority: this.form.priority, imageUrls: this.imageUrls }).subscribe({
       next: () => { this.saving = false; this.showModal = false; this.form = { title:'', issue:'', priority:'MEDIUM' }; this.imageUrls = []; this.previewUrls = []; this.load(); },
-      error: () => { this.saving = false; this.error = 'Failed to submit'; }
+      error: err => { this.saving = false; this.error = err.error?.message || 'Failed to submit maintenance request'; }
     });
   }
 

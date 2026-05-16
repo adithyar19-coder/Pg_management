@@ -15,6 +15,7 @@ export class TenantDashboardComponent implements OnInit {
   complaints: any[] = [];
   rentRecords: any[] = [];
   announcements: any[] = [];
+  myRequests: any[] = [];
   loading = true;
   user = this.auth.getCurrentUser();
 
@@ -25,6 +26,11 @@ export class TenantDashboardComponent implements OnInit {
     this.api.getMyComplaints().subscribe(r => this.complaints = (r.data || []).slice(0, 3));
     this.api.getMyRent().subscribe(r => this.rentRecords = (r.data || []).filter((x: any) => x.status === 'PENDING').slice(0, 3));
     this.api.getTenantAnnouncements().subscribe(r => this.announcements = (r.data || []).slice(0, 3));
+    this.api.getMyRoomRequests().subscribe(r => this.myRequests = (r.data || []).filter((x: any) => x.status === 'PENDING'));
+  }
+
+  requestBadgeClass(s: string) {
+    return { PENDING: 'badge-amber', APPROVED: 'badge-green', REJECTED: 'badge-red', CANCELLED: 'badge-gray' }[s] || 'badge-gray';
   }
 
   badgeClass(s: string) { return { OPEN:'badge-red', IN_PROGRESS:'badge-amber', RESOLVED:'badge-green', REJECTED:'badge-gray' }[s] || 'badge-gray'; }

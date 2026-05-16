@@ -16,6 +16,7 @@ export class AnnouncementsComponent implements OnInit {
   loading = true;
   showModal = false;
   saving = false;
+  error = '';
   form = { title: '', message: '', pgId: '', priority: 'NORMAL' };
   priorities = ['LOW','NORMAL','HIGH','URGENT'];
 
@@ -31,13 +32,22 @@ export class AnnouncementsComponent implements OnInit {
   }
 
   save() {
+    if (!this.form.title?.trim()) { this.error = 'Title is required'; return; }
+    if (!this.form.message?.trim()) { this.error = 'Message is required'; return; }
     this.saving = true;
+    this.error = '';
     const payload: any = { title: this.form.title, message: this.form.message, priority: this.form.priority };
     if (this.form.pgId) payload.pgId = this.form.pgId;
     this.api.createAnnouncement(payload).subscribe({
       next: () => { this.saving = false; this.showModal = false; this.form = { title:'', message:'', pgId:'', priority:'NORMAL' }; this.load(); },
-      error: () => this.saving = false
+      error: err => { this.saving = false; this.error = err.error?.message || 'Failed to post announcement'; }
     });
+  }
+
+  openAdd() {
+    this.form = { title: '', message: '', pgId: '', priority: 'NORMAL' };
+    this.error = '';
+    this.showModal = true;
   }
 
   priorityClass(p: string) { return { LOW:'badge-gray', NORMAL:'badge-blue', HIGH:'badge-amber', URGENT:'badge-red' }[p] || 'badge-gray'; }

@@ -24,8 +24,9 @@ export class PgsComponent implements OnInit {
   editMode = false;
   saving = false;
   selectedId: number | null = null;
+  error = '';
 
-  form = { name: '', address: '', phone: '', rules: '', amenities: '', totalRooms: '' };
+  form = { name: '', address: '', phone: '', rules: '', amenities: '', totalRooms: '', city: '', locality: '' };
 
   // Setup-rooms modal state (shown after a new PG is created)
   showRoomsModal = false;
@@ -46,21 +47,35 @@ export class PgsComponent implements OnInit {
   }
 
   openAdd() {
-    this.form = { name: '', address: '', phone: '', rules: '', amenities: '', totalRooms: '' };
+    this.form = { name: '', address: '', phone: '', rules: '', amenities: '', totalRooms: '', city: '', locality: '' };
     this.editMode = false;
     this.selectedId = null;
+    this.error = '';
     this.showModal = true;
   }
 
   openEdit(pg: PG) {
-    this.form = { name: pg.name, address: pg.address, phone: pg.phone || '', rules: pg.rules || '', amenities: pg.amenities || '', totalRooms: pg.totalRooms || '' };
+    this.form = {
+      name: pg.name,
+      address: pg.address,
+      phone: pg.phone || '',
+      rules: pg.rules || '',
+      amenities: pg.amenities || '',
+      totalRooms: pg.totalRooms || '',
+      city: pg.city || '',
+      locality: pg.locality || ''
+    };
     this.editMode = true;
     this.selectedId = pg.id;
+    this.error = '';
     this.showModal = true;
   }
 
   save() {
+    if (!this.form.name?.trim()) { this.error = 'PG name is required'; return; }
+    if (!this.form.address?.trim()) { this.error = 'Address is required'; return; }
     this.saving = true;
+    this.error = '';
     const obs = this.editMode ? this.api.updatePG(this.selectedId!, this.form) : this.api.createPG(this.form);
     obs.subscribe({
       next: (res) => {
@@ -74,7 +89,7 @@ export class PgsComponent implements OnInit {
           this.openSetupRooms(createdPg.id, createdPg.name, count);
         }
       },
-      error: () => this.saving = false
+      error: err => { this.saving = false; this.error = err.error?.message || 'Failed to save PG'; }
     });
   }
 

@@ -16,6 +16,7 @@ export class ComplaintsComponent implements OnInit {
   selected: Complaint | null = null;
   showModal = false;
   saving = false;
+  error = '';
   newStatus = '';
   ownerNote = '';
   filterStatus = '';
@@ -35,14 +36,15 @@ export class ComplaintsComponent implements OnInit {
     return this.filterStatus ? this.complaints.filter(c => c.status === this.filterStatus) : this.complaints;
   }
 
-  open(c: Complaint) { this.selected = c; this.newStatus = c.status; this.ownerNote = c.ownerNote || ''; this.showModal = true; }
+  open(c: Complaint) { this.selected = c; this.newStatus = c.status; this.ownerNote = c.ownerNote || ''; this.error = ''; this.showModal = true; }
 
   update() {
     if (!this.selected) return;
     this.saving = true;
+    this.error = '';
     this.api.updateComplaint(this.selected.id, { status: this.newStatus, ownerNote: this.ownerNote }).subscribe({
       next: () => { this.saving = false; this.showModal = false; this.load(); },
-      error: () => this.saving = false
+      error: err => { this.saving = false; this.error = err.error?.message || 'Failed to update complaint'; }
     });
   }
 

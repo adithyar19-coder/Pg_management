@@ -54,7 +54,7 @@ export class TenantComplaintsComponent implements OnInit {
     this.saving = true; this.error = '';
     this.api.raiseComplaint({ title: this.form.title, description: this.form.description, imageUrls: this.imageUrls }).subscribe({
       next: () => { this.saving = false; this.showModal = false; this.form = { title:'', description:'' }; this.imageUrls = []; this.previewUrls = []; this.load(); },
-      error: () => { this.saving = false; this.error = 'Failed to submit complaint'; }
+      error: err => { this.saving = false; this.error = err.error?.message || 'Failed to submit complaint'; }
     });
   }
 

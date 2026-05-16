@@ -23,6 +23,7 @@ export class RoomsComponent implements OnInit {
   loading = true;
   showModal = false;
   saving = false;
+  error = '';
   form = { pgId: '', roomNumber: '', capacity: '1', rentAmount: '', type: 'SINGLE' };
   roomTypes = ['SINGLE', 'DOUBLE', 'TRIPLE', 'DORMITORY'];
   filterPgId = '';
@@ -51,13 +52,21 @@ export class RoomsComponent implements OnInit {
     return this.filterPgId ? this.rooms.filter(r => r.pg?.id == +this.filterPgId) : this.rooms;
   }
 
-  openAdd() { this.form = { pgId: this.pgs[0]?.id?.toString() || '', roomNumber: '', capacity: '1', rentAmount: '', type: 'SINGLE' }; this.showModal = true; }
+  openAdd() {
+    this.form = { pgId: this.pgs[0]?.id?.toString() || '', roomNumber: '', capacity: '1', rentAmount: '', type: 'SINGLE' };
+    this.error = '';
+    this.showModal = true;
+  }
 
   save() {
+    if (!this.form.pgId) { this.error = 'Please select a PG'; return; }
+    if (!this.form.roomNumber?.trim()) { this.error = 'Room number is required'; return; }
+    if (!this.form.rentAmount || +this.form.rentAmount <= 0) { this.error = 'Valid rent amount is required'; return; }
     this.saving = true;
+    this.error = '';
     this.api.addRoom({ pgId: +this.form.pgId, roomNumber: this.form.roomNumber, capacity: +this.form.capacity, rentAmount: +this.form.rentAmount, type: this.form.type }).subscribe({
       next: () => { this.saving = false; this.showModal = false; this.loadRooms(); },
-      error: () => this.saving = false
+      error: err => { this.saving = false; this.error = err.error?.message || 'Failed to add room'; }
     });
   }
 

@@ -30,6 +30,34 @@ public class OwnerService {
     private final AnnouncementRepository announcementRepository;
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final RoomRequestRepository roomRequestRepository;
+    private final RoomSuggestionService roomSuggestionService;
+
+    // ── Owner Notifications (owner can also mark their own notifications read) ──
+    public List<Notification> getOwnerNotifications(User owner) {
+        return notificationRepository.findByUserOrderByCreatedAtDesc(owner);
+    }
+
+    public long getOwnerUnreadCount(User owner) {
+        return notificationRepository.countByUserAndIsRead(owner, false);
+    }
+
+    @Transactional
+    public void markOwnerNotificationRead(Long id, User owner) {
+        Notification n = notificationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Notification not found"));
+        if (!n.getUser().getId().equals(owner.getId())) throw new RuntimeException("Not authorized");
+        n.setIsRead(true);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
+    public int markAllOwnerNotificationsRead(User owner) {
+        List<Notification> unread = notificationRepository.findByUserAndIsRead(owner, false);
+        for (Notification n : unread) n.setIsRead(true);
+        notificationRepository.saveAll(unread);
+        return unread.size();
+    }
 
     // ── PG ──────────────────────────────────────────────
     public PG createPG(User owner, Map<String, String> body) {
@@ -41,6 +69,8 @@ public class OwnerService {
                 .amenities(body.get("amenities"))
                 .phone(body.get("phone"))
                 .totalRooms(body.get("totalRooms"))
+                .city(body.get("city"))
+                .locality(body.get("locality"))
                 .build();
         return pgRepository.save(pg);
     }
@@ -57,6 +87,8 @@ public class OwnerService {
         pg.setRules(body.getOrDefault("rules", pg.getRules()));
         pg.setAmenities(body.getOrDefault("amenities", pg.getAmenities()));
         pg.setPhone(body.getOrDefault("phone", pg.getPhone()));
+        pg.setCity(body.getOrDefault("city", pg.getCity()));
+        pg.setLocality(body.getOrDefault("locality", pg.getLocality()));
         return pgRepository.save(pg);
     }
 
@@ -72,6 +104,9 @@ public class OwnerService {
                 .capacity(Integer.valueOf(body.get("capacity").toString()))
                 .rentAmount(new BigDecimal(body.get("rentAmount").toString()))
                 .type(Room.RoomType.valueOf(body.getOrDefault("type", "SINGLE").toString()))
+                .floor(body.get("floor") != null && !body.get("floor").toString().isBlank()
+                        ? Integer.valueOf(body.get("floor").toString()) : 1)
+                .hasAc(body.get("hasAc") != null && Boolean.parseBoolean(body.get("hasAc").toString()))
                 .build();
         return roomRepository.save(room);
     }
@@ -103,12 +138,18 @@ public class OwnerService {
                     ? Integer.parseInt(data.get("capacity").toString()) : 1;
             String type = data.getOrDefault("type", "SINGLE").toString();
 
+            Integer floor = data.get("floor") != null && !data.get("floor").toString().isBlank()
+                    ? Integer.valueOf(data.get("floor").toString()) : 1;
+            Boolean hasAc = data.get("hasAc") != null && Boolean.parseBoolean(data.get("hasAc").toString());
+
             Room room = Room.builder()
                     .pg(pg)
                     .roomNumber(roomNumber)
                     .capacity(capacity)
                     .rentAmount(new BigDecimal(rentObj.toString()))
                     .type(Room.RoomType.valueOf(type))
+                    .floor(floor)
+                    .hasAc(hasAc)
                     .isOccupied(false)
                     .build();
             created.add(roomRepository.save(room));
@@ -141,43 +182,91 @@ public class OwnerService {
         }
     }
 
-    @Transactional
-    public RoomAssignment assignTenant(Long roomId, Long tenantId, User owner) {
-        Room room = roomRepository.findById(roomId).orElseThrow(() -> new RuntimeException("Room not found"));
-        if (!room.getPg().getOwner().getId().equals(owner.getId())) throw new RuntimeException("Not authorized");
-        User tenant = userRepository.findById(tenantId).orElseThrow(() -> new RuntimeException("Tenant not found"));
+    public List<RoomAssignment> getAllTenants(User owner) {
+        return roomAssignmentRepository.findByRoom_PgOwnerAndIsActive(owner, true);
+    }
 
+    // ── Room Request Review (NEW assignment flow) ──────────────────────
+    /** All pending room requests for the owner's PGs. */
+    public List<RoomRequest> getPendingRoomRequests(User owner) {
+        return roomRequestRepository.findByPg_OwnerAndStatusOrderByCreatedAtDesc(owner, RoomRequest.Status.PENDING);
+    }
+
+    /** Full history of room requests for the owner's PGs (any status). */
+    public List<RoomRequest> getAllRoomRequests(User owner) {
+        return roomRequestRepository.findByPg_OwnerOrderByCreatedAtDesc(owner);
+    }
+
+    /** Run the genetic-algorithm suggestion for a given request. */
+    public Map<String, Object> suggestRoomForRequest(Long requestId, User owner) {
+        RoomRequest req = roomRequestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Request not found"));
+        if (!req.getPg().getOwner().getId().equals(owner.getId())) {
+            throw new RuntimeException("Not authorized");
+        }
+        if (req.getStatus() != RoomRequest.Status.PENDING) {
+            throw new IllegalArgumentException("Request is not PENDING (current: " + req.getStatus() + ")");
+        }
+        return roomSuggestionService.suggest(req);
+    }
+
+    /**
+     * Approve a room request, assigning the given room. Re-validates the room
+     * is still vacant (race-condition guard). All side-effects in one transaction:
+     *   - Create RoomAssignment
+     *   - Mark Room.isOccupied if full
+     *   - Generate first rent record
+     *   - Update RoomRequest.status = APPROVED + assignedRoom
+     *   - Notify tenant
+     */
+    @Transactional
+    public RoomRequest approveRoomRequest(Long requestId, Long roomId, User owner, String note) {
+        RoomRequest req = roomRequestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Request not found"));
+        if (!req.getPg().getOwner().getId().equals(owner.getId())) {
+            throw new RuntimeException("Not authorized");
+        }
+        if (req.getStatus() != RoomRequest.Status.PENDING) {
+            throw new IllegalArgumentException("Request is not PENDING (current: " + req.getStatus() + ")");
+        }
+        if (roomId == null) {
+            throw new IllegalArgumentException("roomId is required to approve a request");
+        }
+
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Room not found"));
+        // Room must belong to the same PG as the request
+        if (!room.getPg().getId().equals(req.getPg().getId())) {
+            throw new IllegalArgumentException("Selected room does not belong to the requested PG");
+        }
+        // Tenant should not already have an active assignment (defensive — also checked on submit)
+        User tenant = req.getTenant();
+        if (roomAssignmentRepository.findByTenantAndIsActive(tenant, true).isPresent()) {
+            throw new IllegalArgumentException("Tenant already has an active room. Cannot approve.");
+        }
+
+        // Race-condition guard: re-check capacity
         int capacity = room.getCapacity() != null ? room.getCapacity() : 1;
         long activeCount = roomAssignmentRepository.countByRoomAndIsActive(room, true);
         if (activeCount >= capacity) {
-            throw new IllegalArgumentException("Room " + room.getRoomNumber() + " is already full (" + activeCount + "/" + capacity + ")");
+            throw new IllegalArgumentException("Selected room " + room.getRoomNumber()
+                    + " is no longer vacant (" + activeCount + "/" + capacity + ").");
         }
-
-        // Vacate existing assignment if any (and recompute old room's occupied flag)
-        roomAssignmentRepository.findByTenantAndIsActive(tenant, true).ifPresent(a -> {
-            a.setIsActive(false);
-            a.setLeaveDate(LocalDate.now());
-            Room oldRoom = a.getRoom();
-            roomAssignmentRepository.save(a);
-            long oldActive = roomAssignmentRepository.countByRoomAndIsActive(oldRoom, true);
-            int oldCap = oldRoom.getCapacity() != null ? oldRoom.getCapacity() : 1;
-            oldRoom.setIsOccupied(oldActive >= oldCap);
-            roomRepository.save(oldRoom);
-        });
 
         // Mark new room full iff this assignment fills the last spot
         room.setIsOccupied((activeCount + 1) >= capacity);
         roomRepository.save(room);
 
+        // Create the assignment
         RoomAssignment assignment = RoomAssignment.builder()
                 .tenant(tenant)
                 .room(room)
                 .joinDate(LocalDate.now())
                 .isActive(true)
                 .build();
-        assignment = roomAssignmentRepository.save(assignment);
+        roomAssignmentRepository.save(assignment);
 
-        // Generate first rent record
+        // Generate first rent record (if not already present for current month)
         String currentMonth = LocalDate.now().toString().substring(0, 7);
         if (!rentRecordRepository.existsByTenantAndMonth(tenant, currentMonth)) {
             RentRecord rent = RentRecord.builder()
@@ -190,19 +279,47 @@ public class OwnerService {
             rentRecordRepository.save(rent);
         }
 
+        // Update request
+        req.setStatus(RoomRequest.Status.APPROVED);
+        req.setAssignedRoom(room);
+        req.setOwnerNote(note);
+        req.setReviewedAt(LocalDateTime.now());
+        req = roomRequestRepository.save(req);
+
         // Notify tenant
         Notification notif = Notification.builder()
                 .user(tenant)
-                .message("You have been assigned to room " + room.getRoomNumber() + " in " + room.getPg().getName())
-                .type("ASSIGNMENT")
+                .message("Your room request for " + req.getPg().getName()
+                        + " was APPROVED. You have been assigned Room " + room.getRoomNumber() + ".")
+                .type("REQUEST_APPROVED")
                 .build();
         notificationRepository.save(notif);
-
-        return assignment;
+        return req;
     }
 
-    public List<RoomAssignment> getAllTenants(User owner) {
-        return roomAssignmentRepository.findByRoom_PgOwnerAndIsActive(owner, true);
+    @Transactional
+    public RoomRequest rejectRoomRequest(Long requestId, User owner, String note) {
+        RoomRequest req = roomRequestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Request not found"));
+        if (!req.getPg().getOwner().getId().equals(owner.getId())) {
+            throw new RuntimeException("Not authorized");
+        }
+        if (req.getStatus() != RoomRequest.Status.PENDING) {
+            throw new IllegalArgumentException("Request is not PENDING (current: " + req.getStatus() + ")");
+        }
+        req.setStatus(RoomRequest.Status.REJECTED);
+        req.setOwnerNote(note);
+        req.setReviewedAt(LocalDateTime.now());
+        req = roomRequestRepository.save(req);
+
+        Notification notif = Notification.builder()
+                .user(req.getTenant())
+                .message("Your room request for " + req.getPg().getName() + " was rejected."
+                        + (note != null && !note.isBlank() ? " Note: " + note : ""))
+                .type("REQUEST_REJECTED")
+                .build();
+        notificationRepository.save(notif);
+        return req;
     }
 
     // ── Vacate request review ────────────────────────────

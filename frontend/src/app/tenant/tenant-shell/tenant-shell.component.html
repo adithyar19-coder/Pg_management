@@ -22,7 +22,7 @@
            [routerLink]="item.route" routerLinkActive="active">
           <span class="nav-icon">{{ item.icon }}</span>
           {{ item.label }}
-          <span *ngIf="item.badge && unreadCount > 0" class="nav-badge">{{ unreadCount }}</span>
+          <span *ngIf="badgeValue(item.badge) > 0" class="nav-badge">{{ badgeValue(item.badge) }}</span>
         </a>
       </div>
     </nav>

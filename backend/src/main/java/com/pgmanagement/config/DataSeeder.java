@@ -27,6 +27,9 @@ public class DataSeeder implements CommandLineRunner {
     private final MaintenanceRequestRepository maintenanceRepo;
     private final AnnouncementRepository announcementRepo;
     private final NotificationRepository notifRepo;
+    private final FoodMenuRepository foodMenuRepo;
+    private final ForumPostRepository forumPostRepo;
+    private final ForumReplyRepository forumReplyRepo;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -76,6 +79,8 @@ public class DataSeeder implements CommandLineRunner {
                 .owner(owner)
                 .name("Sunrise Boys PG")
                 .address("12, MG Road, Koramangala, Bengaluru - 560034")
+                .city("Bengaluru")
+                .locality("Koramangala")
                 .rules("No smoking indoors. Visitors allowed till 9 PM. Common area must be kept clean.")
                 .amenities("WiFi, AC, Hot Water, Meals (Breakfast & Dinner), Laundry, Parking")
                 .phone("+91 98765 43210")
@@ -86,6 +91,8 @@ public class DataSeeder implements CommandLineRunner {
                 .owner(owner)
                 .name("Green Valley PG")
                 .address("45, HSR Layout, Sector 2, Bengaluru - 560102")
+                .city("Bengaluru")
+                .locality("HSR Layout")
                 .rules("Quiet hours after 11 PM. No pets allowed. Monthly rent due by 5th.")
                 .amenities("WiFi, Geyser, TV in common area, 24/7 Security, Power Backup")
                 .phone("+91 98765 43220")
@@ -94,21 +101,28 @@ public class DataSeeder implements CommandLineRunner {
 
         // ── Rooms ──────────────────────────────────────────────────────────
         Room r101 = roomRepo.save(Room.builder().pg(pg1).roomNumber("101").capacity(1)
-                .rentAmount(new BigDecimal("8500")).type(Room.RoomType.SINGLE).isOccupied(true).build());
+                .rentAmount(new BigDecimal("8500")).type(Room.RoomType.SINGLE)
+                .floor(1).hasAc(true).isOccupied(true).build());
         // Room 102 (DOUBLE) will have Priya as its only tenant — 1/2 beds filled, showcases partial occupancy
         Room r102 = roomRepo.save(Room.builder().pg(pg1).roomNumber("102").capacity(2)
-                .rentAmount(new BigDecimal("6000")).type(Room.RoomType.DOUBLE).isOccupied(false).build());
+                .rentAmount(new BigDecimal("6000")).type(Room.RoomType.DOUBLE)
+                .floor(1).hasAc(false).isOccupied(false).build());
         Room r103 = roomRepo.save(Room.builder().pg(pg1).roomNumber("103").capacity(1)
-                .rentAmount(new BigDecimal("9000")).type(Room.RoomType.SINGLE).isOccupied(true).build());
+                .rentAmount(new BigDecimal("9000")).type(Room.RoomType.SINGLE)
+                .floor(2).hasAc(true).isOccupied(true).build());
         Room r104 = roomRepo.save(Room.builder().pg(pg1).roomNumber("104").capacity(3)
-                .rentAmount(new BigDecimal("4500")).type(Room.RoomType.TRIPLE).isOccupied(false).build());
+                .rentAmount(new BigDecimal("4500")).type(Room.RoomType.TRIPLE)
+                .floor(2).hasAc(false).isOccupied(false).build());
         Room r105 = roomRepo.save(Room.builder().pg(pg1).roomNumber("105").capacity(1)
-                .rentAmount(new BigDecimal("8000")).type(Room.RoomType.SINGLE).isOccupied(false).build());
+                .rentAmount(new BigDecimal("8000")).type(Room.RoomType.SINGLE)
+                .floor(3).hasAc(true).isOccupied(false).build());
 
         Room r201 = roomRepo.save(Room.builder().pg(pg2).roomNumber("201").capacity(2)
-                .rentAmount(new BigDecimal("5500")).type(Room.RoomType.DOUBLE).isOccupied(false).build());
+                .rentAmount(new BigDecimal("5500")).type(Room.RoomType.DOUBLE)
+                .floor(1).hasAc(false).isOccupied(false).build());
         Room r202 = roomRepo.save(Room.builder().pg(pg2).roomNumber("202").capacity(1)
-                .rentAmount(new BigDecimal("7500")).type(Room.RoomType.SINGLE).isOccupied(false).build());
+                .rentAmount(new BigDecimal("7500")).type(Room.RoomType.SINGLE)
+                .floor(2).hasAc(true).isOccupied(false).build());
 
         // ── Room Assignments ───────────────────────────────────────────────
         RoomAssignment a1 = assignmentRepo.save(RoomAssignment.builder()
@@ -274,8 +288,46 @@ public class DataSeeder implements CommandLineRunner {
                 .message("Rent for " + lastMonth + " marked as PAID. Amount: ₹9000")
                 .type("RENT").isRead(false).createdAt(LocalDateTime.now().minusMonths(1)).build());
 
+        // ── Food Menu (sample week for pg1) ─────────────────────────────────
+        seedMenu(pg1, FoodMenu.DayOfWeek.MON, "Idli, Sambar, Coconut Chutney", "Aloo Paratha, Curd, Pickle", "Tea & Biscuits", "Veg Pulao, Dal, Raita");
+        seedMenu(pg1, FoodMenu.DayOfWeek.TUE, "Poha, Banana", "Roti, Rajma, Salad", "Samosa & Tea", "Rice, Chicken Curry, Salad");
+        seedMenu(pg1, FoodMenu.DayOfWeek.WED, "Dosa, Sambar, Chutney", "Roti, Paneer Bhurji, Salad", "Bread Pakora, Tea", "Veg Biryani, Raita");
+        seedMenu(pg1, FoodMenu.DayOfWeek.THU, "Upma, Chutney", "Roti, Chana Masala, Salad", "Tea & Biscuits", "Pulao, Egg Curry, Salad");
+        seedMenu(pg1, FoodMenu.DayOfWeek.FRI, "Aloo Paratha, Curd", "Roti, Mixed Veg, Dal", "Maggi & Tea", "Rice, Dal Tadka, Aloo Sabzi");
+        seedMenu(pg1, FoodMenu.DayOfWeek.SAT, "Idli, Sambar", "Special: Chole Bhature", "Coffee & Snacks", "Rice, Sambhar, Veg Curry");
+        seedMenu(pg1, FoodMenu.DayOfWeek.SUN, "Puri, Aloo Sabzi", "Special: Veg Biryani, Raita", "Cake & Tea", "Roti, Paneer Butter Masala, Sweet");
+
+        // ── Forum (sample threads for pg1) ──────────────────────────────────
+        ForumPost fp1 = forumPostRepo.save(ForumPost.builder()
+                .pg(pg1).author(owner).title("📢 Welcome to the community board!")
+                .body("Hi everyone, use this space to discuss anything PG-related: trade ideas, ask for help, organize movie nights, whatever. Be respectful 🙏")
+                .isPinned(true)
+                .createdAt(LocalDateTime.now().minusDays(10))
+                .build());
+        forumReplyRepo.save(ForumReply.builder().post(fp1).author(tenant1)
+                .body("Thanks, looking forward to it!")
+                .createdAt(LocalDateTime.now().minusDays(9)).build());
+
+        ForumPost fp2 = forumPostRepo.save(ForumPost.builder()
+                .pg(pg1).author(tenant1).title("Anyone interested in a weekend trek?")
+                .body("Planning a day trek to Nandi Hills this Saturday at 5 AM. Reply if you're in!")
+                .isPinned(false)
+                .createdAt(LocalDateTime.now().minusDays(2))
+                .build());
+        forumReplyRepo.save(ForumReply.builder().post(fp2).author(tenant3)
+                .body("Count me in! Should we book a cab?")
+                .createdAt(LocalDateTime.now().minusDays(1)).build());
+
         log.info("✅ Demo data seeded successfully!");
         log.info("   Owner login  → owner@demo.com  / demo123");
         log.info("   Tenant login → tenant@demo.com / demo123");
+    }
+
+    /** Helper: save 4 meals (Breakfast / Lunch / Snacks / Dinner) for one day of the week. */
+    private void seedMenu(PG pg, FoodMenu.DayOfWeek day, String breakfast, String lunch, String snacks, String dinner) {
+        foodMenuRepo.save(FoodMenu.builder().pg(pg).dayOfWeek(day).mealType(FoodMenu.MealType.BREAKFAST).items(breakfast).build());
+        foodMenuRepo.save(FoodMenu.builder().pg(pg).dayOfWeek(day).mealType(FoodMenu.MealType.LUNCH).items(lunch).build());
+        foodMenuRepo.save(FoodMenu.builder().pg(pg).dayOfWeek(day).mealType(FoodMenu.MealType.SNACKS).items(snacks).build());
+        foodMenuRepo.save(FoodMenu.builder().pg(pg).dayOfWeek(day).mealType(FoodMenu.MealType.DINNER).items(dinner).build());
     }
 }

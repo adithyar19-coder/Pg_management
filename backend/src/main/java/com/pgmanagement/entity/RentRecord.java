@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "rent_records")
@@ -36,6 +37,9 @@ public class RentRecord {
 
     private LocalDate dueDate;
     private LocalDate paidDate;
+
+    /** Last time a reminder was pushed for this record. Prevents spamming the tenant. */
+    private LocalDateTime reminderSentAt;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default

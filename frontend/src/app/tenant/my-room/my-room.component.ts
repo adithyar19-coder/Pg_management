@@ -74,7 +74,7 @@ export class MyRoomComponent implements OnInit {
     this.cancelling = true;
     this.api.cancelVacateRequest().subscribe({
       next: () => { this.cancelling = false; this.load(); },
-      error: () => { this.cancelling = false; }
+      error: (err) => { this.cancelling = false; this.vacateError = err.error?.message || 'Failed to cancel'; }
     });
   }
 }

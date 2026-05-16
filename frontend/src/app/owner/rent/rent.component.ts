@@ -17,6 +17,10 @@ export class RentComponent implements OnInit {
   filterStatus = '';
   search = '';
 
+  // Rent-reminder UX
+  sendingReminders = false;
+  reminderResult = '';
+
   constructor(private api: ApiService) {}
   ngOnInit() { this.load(); }
 
@@ -41,4 +45,23 @@ export class RentComponent implements OnInit {
   pendingCount() { return this.records.filter(r => r.status === 'PENDING').length; }
   paidCount() { return this.records.filter(r => r.status === 'PAID').length; }
   statusClass(s: string) { return { PENDING:'badge-amber', PAID:'badge-green', OVERDUE:'badge-red' }[s] || 'badge-gray'; }
+
+  sendReminders() {
+    this.sendingReminders = true;
+    this.reminderResult = '';
+    this.api.sendRentReminders().subscribe({
+      next: r => {
+        this.sendingReminders = false;
+        const n = r.data?.count ?? 0;
+        this.reminderResult = n > 0
+          ? `✓ Sent ${n} reminder${n === 1 ? '' : 's'} (rent due within 2 days).`
+          : 'No reminders needed right now — nobody has rent due in the next 2 days.';
+        setTimeout(() => this.reminderResult = '', 5000);
+      },
+      error: err => {
+        this.sendingReminders = false;
+        this.reminderResult = '⚠️ ' + (err.error?.message || 'Failed to send reminders');
+      }
+    });
+  }
 }

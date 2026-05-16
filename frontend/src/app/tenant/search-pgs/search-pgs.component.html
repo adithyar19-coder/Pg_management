@@ -1,0 +1,122 @@
+<div class="page-header">
+  <div><h1>Find a PG</h1><p>Search PG properties by city or locality, then send a room request</p></div>
+</div>
+
+<!-- Filter bar -->
+<div class="card" style="padding:16px 18px;margin-bottom:20px">
+  <div style="display:grid;grid-template-columns:1fr 1fr auto auto;gap:12px;align-items:end">
+    <div class="form-group" style="margin:0">
+      <label class="form-label">City</label>
+      <input class="form-control" [(ngModel)]="city" placeholder="e.g. Bengaluru" (keyup.enter)="search()">
+    </div>
+    <div class="form-group" style="margin:0">
+      <label class="form-label">Locality</label>
+      <input class="form-control" [(ngModel)]="locality" placeholder="e.g. Koramangala, HSR Layout" (keyup.enter)="search()">
+    </div>
+    <button class="btn btn-primary" (click)="search()" [disabled]="searching">
+      <span *ngIf="searching" class="spinner"></span>
+      🔍 Search
+    </button>
+    <button class="btn btn-outline" (click)="clearFilters()" *ngIf="city || locality">✕ Clear</button>
+  </div>
+</div>
+
+<div *ngIf="loading" style="text-align:center;padding:60px"><div class="spinner spinner-dark"></div></div>
+
+<div *ngIf="!loading && pgs.length === 0" class="empty-state card" style="padding:60px">
+  <div class="empty-icon">🏢</div>
+  <div class="empty-title">No PGs found</div>
+  <div class="empty-text">Try different city or locality filters, or clear filters to see all listings</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px" *ngIf="!loading && pgs.length > 0">
+  <div class="card" *ngFor="let pg of pgs">
+    <div style="padding:18px 22px;border-bottom:1px solid var(--gray-100)">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+        <div style="width:42px;height:42px;background:var(--primary-light);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:1.4rem">🏢</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:1.05rem;color:var(--gray-900)">{{ pg.name }}</div>
+          <div style="font-size:0.78rem;color:var(--gray-500)">
+            <span *ngIf="pg.city || pg.locality">📍 {{ pg.locality || '' }}<span *ngIf="pg.locality && pg.city">, </span>{{ pg.city || '' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body" style="padding:16px 22px">
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:0.85rem">
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="flex-shrink:0">📍</span>
+          <span style="color:var(--gray-600)">{{ pg.address }}</span>
+        </div>
+        <div *ngIf="pg.phone" style="display:flex;gap:8px;align-items:center">
+          <span>📞</span>
+          <span style="color:var(--gray-600)">{{ pg.phone }}</span>
+        </div>
+        <div *ngIf="pg.amenities" style="display:flex;gap:8px;align-items:flex-start">
+          <span style="flex-shrink:0">⭐</span>
+          <span style="color:var(--gray-500);font-size:0.8rem">{{ pg.amenities }}</span>
+        </div>
+        <div *ngIf="pg.totalRooms" style="display:flex;gap:8px;align-items:center">
+          <span>🛏</span>
+          <span style="color:var(--gray-500);font-size:0.8rem">{{ pg.totalRooms }} room(s)</span>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:14px" (click)="openRequest(pg)">
+        ✉️ Send Room Request
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Request Modal -->
+<div class="modal-overlay" *ngIf="showRequestModal" (click)="showRequestModal=false">
+  <div class="modal" (click)="$event.stopPropagation()" style="max-width:560px">
+    <div class="modal-header">
+      <span class="modal-title">✉️ Request a Room at <strong>{{ selectedPg?.name }}</strong></span>
+      <button class="modal-close" (click)="showRequestModal=false">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--primary-light);color:var(--primary-dark);padding:10px 14px;border-radius:var(--radius);font-size:0.82rem;margin-bottom:14px">
+        💡 Tell us your preferences and the PG owner will match you with the best available room using our smart matching system.
+      </div>
+
+      <div *ngIf="requestError" class="alert alert-error" style="margin-bottom:12px">⚠️ {{ requestError }}</div>
+      <div *ngIf="successMsg" class="alert alert-success" style="margin-bottom:12px">{{ successMsg }}</div>
+
+      <div class="form-group">
+        <label class="form-label">Preferred Room Type</label>
+        <select class="form-control form-select" [(ngModel)]="form.preferredType">
+          <option value="">— No preference —</option>
+          <option *ngFor="let t of roomTypes" [value]="t">{{ t }}</option>
+        </select>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Preferred Floor</label>
+          <input class="form-control" type="number" min="0" max="20" [(ngModel)]="form.preferredFloor" placeholder="Any">
+        </div>
+        <div class="form-group">
+          <label class="form-label">AC Required?</label>
+          <select class="form-control form-select" [(ngModel)]="form.acPreference">
+            <option value="">— No preference —</option>
+            <option value="true">Yes, AC required</option>
+            <option value="false">No, non-AC is fine</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Notes / Additional Info</label>
+        <textarea class="form-control" rows="3" [(ngModel)]="form.notes" placeholder="Any other preferences (window-side, near washroom, ground floor, etc.)"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="showRequestModal=false">Cancel</button>
+      <button class="btn btn-primary" (click)="submitRequest()" [disabled]="submitting">
+        <span *ngIf="submitting" class="spinner"></span>
+        {{ submitting ? 'Submitting...' : '📤 Submit Request' }}
+      </button>
+    </div>
+  </div>
+</div>
